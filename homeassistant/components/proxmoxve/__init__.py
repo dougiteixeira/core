@@ -50,12 +50,15 @@ from .const import (
     INTEGRATION_NAME,
     LOGGER,
     PROXMOX_CLIENT,
+    ProxmoxCommand,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.SENSOR,
 ]
 
 COORDINATOR_UPDATE_INTERVAL_MAP = {
@@ -547,3 +550,30 @@ class ProxmoxClient:
     def get_api_client(self):
         """Return the ProxmoxAPI client."""
         return self._proxmox
+
+
+def call_api_post_status(
+    proxmox,
+    api_category: ProxmoxType,
+    command: str,
+    node: str,
+    vm_id: int | None = None,
+):
+    """Make proper api post status calls to set state."""
+    result = None
+    if command not in ProxmoxCommand:
+        raise ValueError("Invalid Command")
+
+    try:
+        if api_category is ProxmoxType.QEMU:
+            result = proxmox.nodes(node).qemu(vm_id).status.post(command)
+        elif api_category is ProxmoxType.LXC:
+            result = proxmox.nodes(node).lxc(vm_id).status.post(command)
+        elif api_category is ProxmoxType.Node:
+            result = proxmox.nodes(node).post(command)
+    except (ResourceException, ConnectTimeout) as err:
+        raise ValueError(
+            f"Proxmox {api_category} {command} error - {err}",
+        ) from err
+
+    return result

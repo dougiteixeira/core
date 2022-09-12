@@ -1,4 +1,6 @@
-"""Constants for ProxmoxVE."""
+"""Constants for Proxmox integration."""
+from __future__ import annotations
+
 import logging
 
 from homeassistant.backports.enum import StrEnum
@@ -32,6 +34,20 @@ class ProxmoxType(StrEnum):
     Node = "node"
     QEMU = "qemu"
     LXC = "lxc"
+
+
+class ProxmoxCommand(StrEnum):
+    """Proxmox commands Nodes/VM/CT."""
+
+    REBOOT = "reboot"
+    RESUME = "resume"
+    SHUTDOWN = "shutdown"
+    START = "start"
+    STOP = "stop"
+    SUSPEND = "suspend"  # API notes 'This is experimental.'  https://pve.proxmox.com/pve-docs/api-viewer/#/nodes/{node}/lxc/{vmid}/status/suspend
+    RESET = "reset"
+    START_ALL = "startall"
+    STOP_ALL = "stopall"
 
 
 class ProxmoxKeyAPIParse(StrEnum):
