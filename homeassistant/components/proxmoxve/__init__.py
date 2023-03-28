@@ -141,7 +141,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     # Create a coordinator for each vm/container
     for host_config in config[DOMAIN]:
-        host_name = host_config["host"]
+        host_name = host_config[CONF_HOST]
         coordinators[host_name] = {}
 
         proxmox_client = hass.data[PROXMOX_CLIENTS][host_name]
@@ -152,11 +152,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         proxmox = proxmox_client.get_api_client()
 
-        for node_config in host_config["nodes"]:
-            node_name = node_config["node"]
+        for node_config in host_config[CONF_NODES]:
+            node_name = node_config[CONF_NODE]
             node_coordinators = coordinators[host_name][node_name] = {}
 
-            for vm_id in node_config["vms"]:
+            for vm_id in node_config[CONF_VMS]:
                 coordinator = create_coordinator_container_vm(
                     hass, proxmox, host_name, node_name, vm_id, TYPE_VM
                 )
@@ -166,7 +166,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
                 node_coordinators[vm_id] = coordinator
 
-            for container_id in node_config["containers"]:
+            for container_id in node_config[CONF_CONTAINERS]:
                 coordinator = create_coordinator_container_vm(
                     hass, proxmox, host_name, node_name, container_id, TYPE_CONTAINER
                 )

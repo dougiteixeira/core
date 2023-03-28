@@ -5,12 +5,14 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from . import COORDINATORS, DOMAIN, PROXMOX_CLIENTS, ProxmoxEntity
+from .const import CONF_CONTAINERS, CONF_NODE, CONF_NODES, CONF_VMS
 
 
 async def async_setup_platform(
@@ -26,16 +28,16 @@ async def async_setup_platform(
     sensors = []
 
     for host_config in discovery_info["config"][DOMAIN]:
-        host_name = host_config["host"]
+        host_name = host_config[CONF_HOST]
         host_name_coordinators = hass.data[DOMAIN][COORDINATORS][host_name]
 
         if hass.data[PROXMOX_CLIENTS][host_name] is None:
             continue
 
-        for node_config in host_config["nodes"]:
-            node_name = node_config["node"]
+        for node_config in host_config[CONF_NODES]:
+            node_name = node_config[CONF_NODE]
 
-            for dev_id in node_config["vms"] + node_config["containers"]:
+            for dev_id in node_config[CONF_VMS] + node_config[CONF_CONTAINERS]:
                 coordinator = host_name_coordinators[node_name][dev_id]
 
                 # unfound case
