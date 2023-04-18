@@ -190,11 +190,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
 
     coordinators: dict[
-        str,
-        dict[
-            str | int,
-            ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator,
-        ],
+        str | int,
+        ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator,
     ] = {}
     nodes_add_device = []
 
@@ -203,7 +200,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             node["node"]
             for node in await hass.async_add_executor_job(proxmox.nodes().get)
         ]:
-            coordinators[node] = {}
             async_delete_issue(
                 async_get_hass(),
                 DOMAIN,
@@ -216,7 +212,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 node_name=node,
             )
             await coordinator_node.async_refresh()
-            coordinators[node][CONF_NODE] = coordinator_node
+            coordinators[node] = coordinator_node
             nodes_add_device.append(node)
 
             for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
@@ -235,11 +231,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         hass=hass,
                         proxmox=proxmox,
                         host_name=config_entry.data[CONF_HOST],
-                        node_name=node,
                         qemu_id=vm_id,
                     )
                     await coordinator_qemu.async_refresh()
-                    coordinators[node][vm_id] = coordinator_qemu
+                    coordinators[vm_id] = coordinator_qemu
                 else:
                     async_create_issue(
                         async_get_hass(),
@@ -275,11 +270,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         hass=hass,
                         proxmox=proxmox,
                         host_name=config_entry.data[CONF_HOST],
-                        node_name=node,
                         container_id=container_id,
                     )
                     await coordinator_lxc.async_refresh()
-                    coordinators[node][container_id] = coordinator_lxc
+                    coordinators[container_id] = coordinator_lxc
                 else:
                     async_create_issue(
                         async_get_hass(),
@@ -360,7 +354,7 @@ def device_info(
 ):
     """Return the Device Info."""
 
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS][node]
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     host = config_entry.data[CONF_HOST]
     port = config_entry.data[CONF_PORT]
@@ -371,14 +365,14 @@ def device_info(
         if (coordinator_data := coordinator.data) is not None:
             vm_name = coordinator_data.name
 
-        name = f"{node} {vm_name} ({vm_id})"
+        name = f"{api_category.upper()} {vm_name} ({vm_id})"
         host_port_node_vm = f"{host}_{port}_{vm_id}"
         url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
         via_device = (DOMAIN, f"{host}_{port}_{node}")
         default_model = api_category.upper()
 
     elif api_category is ProxmoxType.Node:
-        coordinator = coordinators[CONF_NODE]
+        coordinator = coordinators[node]
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"

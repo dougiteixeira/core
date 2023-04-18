@@ -18,3 +18,4 @@ class ProxmoxVMData:
 
     name: str
     status: str
+    node: str

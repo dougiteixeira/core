@@ -90,7 +90,6 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
         host_name: str,
-        node_name: str,
         qemu_id: int,
     ) -> None:
         """Initialize the Proxmox QEMU coordinator."""
@@ -98,13 +97,13 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
-            name=f"proxmox_coordinator_{host_name}_{node_name}_{qemu_id}",
+            name=f"proxmox_coordinator_{host_name}_{qemu_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
         self.hass = hass
         self.proxmox = proxmox
-        self.node_name = node_name
+        self.node_name: str
         self.qemu_id = qemu_id
 
     async def _async_update_data(self) -> ProxmoxVMData:
@@ -112,12 +111,25 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
         def poll_api() -> dict[str, Any] | None:
             """Return data from the Proxmox QEMU API."""
+            node_name = None
             try:
-                api_status = (
-                    self.proxmox.nodes(self.node_name)
-                    .qemu(self.qemu_id)
-                    .status.current.get()
-                )
+                api_status = None
+
+                resources = self.proxmox.cluster.resources.get()
+                LOGGER.debug("API Response - Resources: %s", resources)
+
+                for resource in resources:
+                    if "vmid" in resource:
+                        if int(resource["vmid"]) == int(self.qemu_id):
+                            node_name = resource["node"]
+
+                if self.node_name is not None:
+                    self.node_name = str(node_name)
+                    api_status = (
+                        self.proxmox.nodes(self.node_name)
+                        .qemu(self.qemu_id)
+                        .status.current.get()
+                    )
 
             except (
                 AuthenticationError,
@@ -131,13 +143,12 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
         api_status = await self.hass.async_add_executor_job(poll_api)
         if api_status is None:
-            raise UpdateFailed(
-                f"Vm/Container {self.qemu_id} unable to be found in node {self.node_name}"
-            )
+            raise UpdateFailed(f"Vm/Container {self.qemu_id} unable to be found")
 
         return ProxmoxVMData(
             status=api_status["status"],
             name=api_status["name"],
+            node="",
         )
 
 
@@ -149,7 +160,6 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
         host_name: str,
-        node_name: str,
         container_id: int,
     ) -> None:
         """Initialize the Proxmox LXC coordinator."""
@@ -157,26 +167,39 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
-            name=f"proxmox_coordinator_{host_name}_{node_name}_{container_id}",
+            name=f"proxmox_coordinator_{host_name}_{container_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
         self.hass = hass
         self.proxmox = proxmox
-        self.node_name = node_name
         self.container_id = container_id
+        self.node_name: str
 
     async def _async_update_data(self) -> ProxmoxVMData:
         """Update data  for Proxmox LXC."""
 
         def poll_api() -> dict[str, Any] | None:
             """Return data from the Proxmox LXC API."""
+            node_name = None
             try:
-                api_status = (
-                    self.proxmox.nodes(self.node_name)
-                    .lxc(self.container_id)
-                    .status.current.get()
-                )
+                api_status = None
+
+                resources = self.proxmox.cluster.resources.get()
+                LOGGER.debug("API Response - Resources: %s", resources)
+
+                for resource in resources:
+                    if "vmid" in resource:
+                        if int(resource["vmid"]) == int(self.container_id):
+                            node_name = resource["node"]
+
+                if node_name is not None:
+                    self.node_name = str(node_name)
+                    api_status = (
+                        self.proxmox.nodes(self.node_name)
+                        .lxc(self.container_id)
+                        .status.current.get()
+                    )
 
             except (
                 AuthenticationError,
@@ -189,12 +212,12 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             return api_status
 
         api_status = await self.hass.async_add_executor_job(poll_api)
+
         if api_status is None:
-            raise UpdateFailed(
-                f"Vm/Container {self.container_id} unable to be found in node {self.node_name}"
-            )
+            raise UpdateFailed(f"Vm/Container {self.container_id} unable to be found")
 
         return ProxmoxVMData(
             status=api_status["status"],
             name=api_status["name"],
+            node=self.node_name,
         )
