@@ -372,7 +372,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 host_port_node_vm = (
                     f"{self.config_entry.data[CONF_HOST]}_"
                     f"{self.config_entry.data[CONF_PORT]}_"
-                    f"{node}_{qemu_id}"
+                    f"{qemu_id}"
                 )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
@@ -381,7 +381,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 async_delete_issue(
                     async_get_hass(),
                     DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{qemu_id}",
+                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{qemu_id}",
                 )
         self.config_entry.data[CONF_NODES][node][CONF_QEMU] = user_input.get(CONF_QEMU)
 
@@ -399,7 +399,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 host_port_node_vm = (
                     f"{self.config_entry.data[CONF_HOST]}_"
                     f"{self.config_entry.data[CONF_PORT]}_"
-                    f"{node}_{lxc_id}"
+                    f"{lxc_id}"
                 )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
@@ -408,7 +408,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 async_delete_issue(
                     async_get_hass(),
                     DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{lxc_id}",
+                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{lxc_id}",
                 )
         self.config_entry.data[CONF_NODES][node][CONF_LXC] = user_input.get(CONF_LXC)
 
@@ -467,7 +467,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     host_port_node_vm = (
                         f"{self.config_entry.data[CONF_HOST]}_"
                         f"{self.config_entry.data[CONF_PORT]}_"
-                        f"{node}_{vm_id}"
+                        f"{vm_id}"
                     )
                     await self.async_remove_device(
                         entry_id=self.config_entry.entry_id,
@@ -476,7 +476,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     async_delete_issue(
                         async_get_hass(),
                         DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                        f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{vm_id}",
                     )
 
                 config_data: dict[str, Any] = self.config_entry.data.copy()
@@ -972,7 +972,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._config[CONF_NODES][node][CONF_LXC].append(lxc_selection)
 
         return self.async_create_entry(
-            title=(f"{node} - {self._config[CONF_HOST]}:" f"{self._config[CONF_PORT]}"),
+            title=(f"{self._config[CONF_HOST]}:" f"{self._config[CONF_PORT]}"),
             data=self._config,
         )
 

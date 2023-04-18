@@ -207,7 +207,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             async_delete_issue(
                 async_get_hass(),
                 DOMAIN,
-                f"node_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}",
+                f"node_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}",
             )
             coordinator_node = ProxmoxNodeCoordinator(
                 hass=hass,
@@ -229,7 +229,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     async_delete_issue(
                         async_get_hass(),
                         DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{vm_id}",
                     )
                     coordinator_qemu = ProxmoxQEMUCoordinator(
                         hass=hass,
@@ -244,7 +244,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     async_create_issue(
                         async_get_hass(),
                         DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{vm_id}",
                         is_fixable=False,
                         severity=IssueSeverity.ERROR,
                         translation_key="vm_id_nonexistent",
@@ -269,7 +269,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     async_delete_issue(
                         async_get_hass(),
                         DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{container_id}",
                     )
                     coordinator_lxc = ProxmoxLXCCoordinator(
                         hass=hass,
@@ -284,7 +284,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     async_create_issue(
                         async_get_hass(),
                         DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{container_id}",
                         is_fixable=False,
                         severity=IssueSeverity.ERROR,
                         translation_key="vm_id_nonexistent",
@@ -372,7 +372,7 @@ def device_info(
             vm_name = coordinator_data.name
 
         name = f"{node} {vm_name} ({vm_id})"
-        host_port_node_vm = f"{host}_{port}_{node}_{vm_id}"
+        host_port_node_vm = f"{host}_{port}_{vm_id}"
         url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
         via_device = (DOMAIN, f"{host}_{port}_{node}")
         default_model = api_category.upper()
