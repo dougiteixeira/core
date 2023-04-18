@@ -26,7 +26,7 @@ async def async_setup_entry(
 
     for node in config_entry.data[CONF_NODES]:
         if node in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]:
-            for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
+            for vm_id in config_entry.data[CONF_QEMU]:
                 if vm_id in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]:
                     coordinator = coordinators[vm_id]
 
@@ -50,7 +50,7 @@ async def async_setup_entry(
                     )
                     sensors.append(vm_sensor)
 
-            for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
+            for container_id in config_entry.data[CONF_LXC]:
                 if (
                     container_id
                     in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]

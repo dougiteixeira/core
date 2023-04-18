@@ -247,7 +247,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         if len(self.config_entry.data[CONF_NODES]) == 1:
             return await self.async_step_selection_qemu_lxc(
-                node=list(self.config_entry.data[CONF_NODES].keys())[0]
+                node=self.config_entry.data[CONF_NODES][0]
             )
 
         nodes = []
@@ -272,23 +272,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         """Handle the QEMU/LXC selection step."""
 
         if user_input is None:
-            if node not in self.config_entry.data[CONF_NODES]:
-                self.config_entry.data[CONF_NODES][node] = {}
-
             old_qemu = []
 
-            if CONF_QEMU not in self.config_entry.data[CONF_NODES][node]:
-                self.config_entry.data[CONF_NODES][node][CONF_QEMU] = []
-
-            for qemu in self.config_entry.data[CONF_NODES][node][CONF_QEMU]:
+            for qemu in self.config_entry.data[CONF_QEMU]:
                 old_qemu.append(str(qemu))
 
             old_lxc = []
 
-            if CONF_LXC not in self.config_entry.data[CONF_NODES][node]:
-                self.config_entry.data[CONF_NODES][node][CONF_LXC] = []
-
-            for lxc in self.config_entry.data[CONF_NODES][node][CONF_LXC]:
+            for lxc in self.config_entry.data[CONF_LXC]:
                 old_lxc.append(str(lxc))
 
             host = self.config_entry.data[CONF_HOST]
@@ -356,6 +347,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
             )
 
+        config_data: dict[str, Any] = (
+            self.config_entry.data.copy() if self.config_entry.data is not None else {}
+        )
         node = user_input.get(CONF_NODE)
 
         qemu_selecition = []
@@ -366,7 +360,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for qemu in qemu_user:
                 qemu_selecition.append(qemu)
 
-        for qemu_id in self.config_entry.data[CONF_NODES][node][CONF_QEMU]:
+        for qemu_id in self.config_entry.data[CONF_QEMU]:
             if qemu_id not in qemu_selecition:
                 # Remove device
                 host_port_node_vm = (
@@ -383,7 +377,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     DOMAIN,
                     f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{qemu_id}",
                 )
-        self.config_entry.data[CONF_NODES][node][CONF_QEMU] = user_input.get(CONF_QEMU)
 
         lxc_selecition = []
         if (
@@ -393,7 +386,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for qemu in lxc_user:
                 lxc_selecition.append(qemu)
 
-        for lxc_id in self.config_entry.data[CONF_NODES][node][CONF_LXC]:
+        for lxc_id in self.config_entry.data[CONF_LXC]:
             if lxc_id not in lxc_selecition:
                 # Remove device
                 host_port_node_vm = (
@@ -410,11 +403,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     DOMAIN,
                     f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{lxc_id}",
                 )
-        self.config_entry.data[CONF_NODES][node][CONF_LXC] = user_input.get(CONF_LXC)
-
-        self.hass.config_entries.async_update_entry(
-            self.config_entry, data=self.config_entry.data
+        config_data.update(
+            {
+                CONF_QEMU: qemu_selecition,
+                CONF_LXC: lxc_selecition,
+            }
         )
+
+        self.hass.config_entries.async_update_entry(self.config_entry, data=config_data)
 
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
@@ -460,8 +456,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 errors["confirm_remove"] = "confirm_remove_false"
             else:
                 for vm_id in (
-                    *self.config_entry.data[CONF_NODES][node][CONF_QEMU],
-                    *self.config_entry.data[CONF_NODES][node][CONF_LXC],
+                    *self.config_entry.data[CONF_QEMU],
+                    *self.config_entry.data[CONF_LXC],
                 ):
                     # Remove device QEMU and LXC
                     host_port_node_vm = (
@@ -680,11 +676,11 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NODES in import_config
             and (import_nodes := import_config.get(CONF_NODES)) is not None
         ):
-            import_config[CONF_NODES] = {}
+            import_config[CONF_NODES] = []
             for node_data in import_nodes:
                 node = node_data[CONF_NODE]
                 if node in proxmox_nodes_host:
-                    import_config[CONF_NODES][node] = {}
+                    import_config[CONF_NODES].append(node)
                     import_config[CONF_NODES][node][CONF_QEMU] = node_data[CONF_VMS]
                     import_config[CONF_NODES][node][CONF_LXC] = node_data[
                         CONF_CONTAINERS
@@ -886,9 +882,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ):
                 return self.async_abort(reason="already_configured")
 
-            self._config[CONF_NODES] = {}
+            self._config[CONF_NODES] = []
             node = user_input.get(CONF_NODE)
-            self._config[CONF_NODES][node] = {}
+            self._config[CONF_NODES].append(node)
             return await self.async_step_selection_qemu_lxc(node=node)
 
         nodes = []
@@ -953,23 +949,23 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         node = str(user_input.get(CONF_NODE))
-        if CONF_QEMU not in self._config[CONF_NODES][node]:
-            self._config[CONF_NODES][node][CONF_QEMU] = []
+        if CONF_QEMU not in self._config:
+            self._config[CONF_QEMU] = []
         if (
             CONF_QEMU in user_input
             and (qemu_user := user_input.get(CONF_QEMU)) is not None
         ):
             for qemu_selection in qemu_user:
-                self._config[CONF_NODES][node][CONF_QEMU].append(qemu_selection)
+                self._config[CONF_QEMU].append(qemu_selection)
 
-        if CONF_LXC not in self._config[CONF_NODES][node]:
-            self._config[CONF_NODES][node][CONF_LXC] = []
+        if CONF_LXC not in self._config:
+            self._config[CONF_LXC] = []
         if (
             CONF_LXC in user_input
             and (lxc_user := user_input.get(CONF_LXC)) is not None
         ):
             for lxc_selection in lxc_user:
-                self._config[CONF_NODES][node][CONF_LXC].append(lxc_selection)
+                self._config[CONF_LXC].append(lxc_selection)
 
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:" f"{self._config[CONF_PORT]}"),

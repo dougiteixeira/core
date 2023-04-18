@@ -195,6 +195,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     ] = {}
     nodes_add_device = []
 
+    resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
+    LOGGER.warning("API Response - Resources: %s", resources)
+
     for node in config_entry.data[CONF_NODES]:
         if node in [
             node["node"]
@@ -215,12 +218,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinators[node] = coordinator_node
             nodes_add_device.append(node)
 
-            for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
+            for vm_id in config_entry.data[CONF_QEMU]:
                 if int(vm_id) in [
-                    int(qemu["vmid"])
-                    for qemu in await hass.async_add_executor_job(
-                        proxmox.nodes(node).qemu.get
-                    )
+                    (int(resource["vmid"]) if "vmid" in resource else None)
+                    for resource in resources
                 ]:
                     async_delete_issue(
                         async_get_hass(),
@@ -254,12 +255,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         },
                     )
 
-            for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
+            for container_id in config_entry.data[CONF_LXC]:
                 if int(container_id) in [
-                    int(lxc["vmid"])
-                    for lxc in await hass.async_add_executor_job(
-                        proxmox.nodes(node).lxc.get
-                    )
+                    (int(resource["vmid"]) if "vmid" in resource else None)
+                    for resource in resources
                 ]:
                     async_delete_issue(
                         async_get_hass(),

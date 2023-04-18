@@ -123,8 +123,8 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
                         if int(resource["vmid"]) == int(self.qemu_id):
                             node_name = resource["node"]
 
+                self.node_name = str(node_name)
                 if self.node_name is not None:
-                    self.node_name = str(node_name)
                     api_status = (
                         self.proxmox.nodes(self.node_name)
                         .qemu(self.qemu_id)
@@ -193,8 +193,8 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
                         if int(resource["vmid"]) == int(self.container_id):
                             node_name = resource["node"]
 
+                self.node_name = str(node_name)
                 if node_name is not None:
-                    self.node_name = str(node_name)
                     api_status = (
                         self.proxmox.nodes(self.node_name)
                         .lxc(self.container_id)
