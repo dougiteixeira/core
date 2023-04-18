@@ -15,8 +15,6 @@ class ProxmoxEntity(CoordinatorEntity):
         unique_id: str,
         name: str,
         icon: str,
-        host_name: str,
-        node_name: str,
         vm_id: int | None = None,
     ) -> None:
         """Initialize the Proxmox entity."""
@@ -25,10 +23,8 @@ class ProxmoxEntity(CoordinatorEntity):
         self.coordinator = coordinator
         self._attr_unique_id = unique_id
         self._attr_name = name
-        self._host_name = host_name
         self._attr_icon = icon
         self._available = True
-        self._node_name = node_name
         self._vm_id = vm_id
 
         self._state = None

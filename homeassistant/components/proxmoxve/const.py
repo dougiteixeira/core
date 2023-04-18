@@ -18,3 +18,13 @@ DEFAULT_VERIFY_SSL = True
 UPDATE_INTERVAL = 60
 
 LOGGER = logging.getLogger(__package__)
+
+CONF_CONTAINERS = "containers"
+CONF_LXC = "lxc"
+CONF_NODE = "node"
+CONF_NODES = "nodes"
+CONF_QEMU = "qemu"
+CONF_REALM = "realm"
+CONF_VMS = "vms"
+
+PROXMOX_CLIENT = "proxmox_client"

@@ -2,10 +2,17 @@
 from __future__ import annotations
 
 from proxmoxer import AuthenticationError, ProxmoxAPI
-import requests.exceptions
-from requests.exceptions import ConnectTimeout, SSLError
+from proxmoxer.core import ResourceException
+from requests.exceptions import (
+    ConnectionError as connError,
+    ConnectTimeout,
+    RetryError,
+    SSLError,
+)
 import voluptuous as vol
 
+from homeassistant.backports.enum import StrEnum
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -14,15 +21,24 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
     Platform,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, async_get_hass
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
+)
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_CONTAINERS,
+    CONF_LXC,
     CONF_NODE,
     CONF_NODES,
+    CONF_QEMU,
     CONF_REALM,
     CONF_VMS,
     COORDINATORS,
@@ -31,9 +47,13 @@ from .const import (
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     LOGGER,
-    PROXMOX_CLIENTS,
+    PROXMOX_CLIENT,
 )
-from .coordinator import ProxmoxLXCCoordinator, ProxmoxQEMUCoordinator
+from .coordinator import (
+    ProxmoxLXCCoordinator,
+    ProxmoxNodeCoordinator,
+    ProxmoxQEMUCoordinator,
+)
 
 PLATFORMS = [Platform.BINARY_SENSOR]
 
@@ -77,117 +97,319 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
+class ProxmoxType(StrEnum):
+    """Proxmox type of information."""
+
+    Proxmox = "proxmox"
+    Node = "node"
+    QEMU = "qemu"
+    LXC = "lxc"
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the platform."""
+
+    # import to config flow
+    if DOMAIN in config:
+        LOGGER.warning(
+            # Proxmox VE config flow added and should be removed in 2023.5.
+            "Configuration of the Proxmox in YAML is deprecated and should "
+            "be removed in 2023.5. Resolve the import issues and remove the "
+            "YAML configuration from your configuration.yaml file",
+        )
+        async_create_issue(
+            async_get_hass(),
+            DOMAIN,
+            "yaml_deprecated",
+            breaks_in_ha_version="2023.8",
+            is_fixable=False,
+            severity=IssueSeverity.WARNING,
+            translation_key="yaml_deprecated",
+            translation_placeholders={
+                "integration": "Proxmox VE",
+                "platform": DOMAIN,
+            },
+        )
+        for conf in config[DOMAIN]:
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": SOURCE_IMPORT},
+                    data=conf,
+                )
+            )
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Set up the platform."""
+
     hass.data.setdefault(DOMAIN, {})
+    entry_data = config_entry.data
 
-    def build_client() -> ProxmoxAPI:
-        """Build the Proxmox client connection."""
-        hass.data[PROXMOX_CLIENTS] = {}
+    host = entry_data[CONF_HOST]
+    port = entry_data[CONF_PORT]
+    user = entry_data[CONF_USERNAME]
+    realm = entry_data[CONF_REALM]
+    password = entry_data[CONF_PASSWORD]
+    verify_ssl = entry_data[CONF_VERIFY_SSL]
 
-        for entry in config[DOMAIN]:
-            host = entry[CONF_HOST]
-            port = entry[CONF_PORT]
-            user = entry[CONF_USERNAME]
-            realm = entry[CONF_REALM]
-            password = entry[CONF_PASSWORD]
-            verify_ssl = entry[CONF_VERIFY_SSL]
+    # Construct an API client with the given data for the given host
+    proxmox_client = ProxmoxClient(
+        host=host,
+        port=port,
+        user=user,
+        realm=realm,
+        password=password,
+        verify_ssl=verify_ssl,
+    )
+    try:
+        await hass.async_add_executor_job(proxmox_client.build_client)
+    except AuthenticationError as error:
+        raise ConfigEntryAuthFailed from error
+    except SSLError as error:
+        raise ConfigEntryNotReady(
+            "Unable to verify proxmox server SSL. Try using 'verify_ssl: false' "
+            f"for proxmox instance {host}:{port}"
+        ) from error
+    except ConnectTimeout as error:
+        raise ConfigEntryNotReady(
+            f"Connection to host {host} timed out during setup"
+        ) from error
+    except RetryError as error:
+        raise ConfigEntryNotReady(
+            f"Connection is unreachable to host {host}"
+        ) from error
+    except connError as error:
+        raise ConfigEntryNotReady(
+            f"Connection is unreachable to host {host}"
+        ) from error
+    except ResourceException as error:
+        raise ConfigEntryNotReady from error
 
-            hass.data[PROXMOX_CLIENTS][host] = None
-
-            try:
-                # Construct an API client with the given data for the given host
-                proxmox_client = ProxmoxClient(
-                    host, port, user, realm, password, verify_ssl
-                )
-                proxmox_client.build_client()
-            except AuthenticationError:
-                LOGGER.warning(
-                    "Invalid credentials for proxmox instance %s:%d", host, port
-                )
-                continue
-            except SSLError:
-                LOGGER.error(
-                    (
-                        "Unable to verify proxmox server SSL. "
-                        'Try using "verify_ssl: false" for proxmox instance %s:%d'
-                    ),
-                    host,
-                    port,
-                )
-                continue
-            except ConnectTimeout:
-                LOGGER.warning("Connection to host %s timed out during setup", host)
-                continue
-            except requests.exceptions.ConnectionError:
-                LOGGER.warning("Host %s is not reachable", host)
-                continue
-
-            hass.data[PROXMOX_CLIENTS][host] = proxmox_client
-
-    await hass.async_add_executor_job(build_client)
+    proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
 
     coordinators: dict[
         str,
         dict[
-            str,
-            dict[
-                int,
-                ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator,
-            ],
+            str | int,
+            ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator,
         ],
     ] = {}
-    hass.data[DOMAIN][COORDINATORS] = coordinators
+    nodes_add_device = []
+    for node in config_entry.data[CONF_NODES]:
+        coordinators[node] = {}
+        if node in [
+            node["node"]
+            for node in await hass.async_add_executor_job(proxmox.nodes().get)
+        ]:
+            async_delete_issue(
+                async_get_hass(),
+                DOMAIN,
+                f"node_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}",
+            )
+            coordinator_node = ProxmoxNodeCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                host_name=config_entry.data[CONF_HOST],
+                node_name=node,
+            )
+            await coordinator_node.async_refresh()
+            coordinators[node][CONF_NODE] = coordinator_node
+            nodes_add_device.append(node)
+        else:
+            async_create_issue(
+                async_get_hass(),
+                DOMAIN,
+                f"node_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}",
+                is_fixable=False,
+                severity=IssueSeverity.ERROR,
+                translation_key="node_nonexistent",
+                translation_placeholders={
+                    "integration": "Proxmox VE",
+                    "platform": DOMAIN,
+                    "host": config_entry.data[CONF_HOST],
+                    "port": config_entry.data[CONF_PORT],
+                    "node": node,
+                },
+            )
 
-    # Create a coordinator for each vm/container
-    for host_config in config[DOMAIN]:
-        host_name = host_config["host"]
-        coordinators[host_name] = {}
-
-        proxmox_client = hass.data[PROXMOX_CLIENTS][host_name]
-
-        # Skip invalid hosts
-        if proxmox_client is None:
-            continue
-
-        proxmox = proxmox_client.get_api_client()
-
-        for node_config in host_config["nodes"]:
-            node_name = node_config["node"]
-            node_coordinators = coordinators[host_name][node_name] = {}
-
-            for vm_id in node_config["vms"]:
+    for node in config_entry.data[CONF_NODES]:
+        for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
+            if vm_id in [
+                str(qemu["vmid"])
+                for qemu in await hass.async_add_executor_job(
+                    proxmox.nodes(node).qemu.get
+                )
+            ]:
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                )
                 coordinator_qemu = ProxmoxQEMUCoordinator(
                     hass=hass,
                     proxmox=proxmox,
-                    host_name=host_name,
-                    node_name=node_name,
+                    host_name=config_entry.data[CONF_HOST],
+                    node_name=node,
                     qemu_id=vm_id,
                 )
-
-                # Fetch initial data
                 await coordinator_qemu.async_refresh()
-
-                node_coordinators[vm_id] = coordinator_qemu
-
-            for container_id in node_config["containers"]:
+                coordinators[node][vm_id] = coordinator_qemu
+            else:
+                async_create_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                    is_fixable=False,
+                    severity=IssueSeverity.ERROR,
+                    translation_key="vm_id_nonexistent",
+                    translation_placeholders={
+                        "integration": "Proxmox VE",
+                        "platform": DOMAIN,
+                        "host": config_entry.data[CONF_HOST],
+                        "port": config_entry.data[CONF_PORT],
+                        "node": node,
+                        "vm_id": vm_id,
+                    },
+                )
+        for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
+            if container_id in [
+                str(lxc["vmid"])
+                for lxc in await hass.async_add_executor_job(
+                    proxmox.nodes(node).lxc.get
+                )
+            ]:
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                )
                 coordinator_lxc = ProxmoxLXCCoordinator(
                     hass=hass,
                     proxmox=proxmox,
-                    host_name=host_name,
-                    node_name=node_name,
+                    host_name=config_entry.data[CONF_HOST],
+                    node_name=node,
                     container_id=container_id,
                 )
                 await coordinator_lxc.async_refresh()
+                coordinators[node][container_id] = coordinator_lxc
+            else:
+                async_create_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                    is_fixable=False,
+                    severity=IssueSeverity.ERROR,
+                    translation_key="vm_id_nonexistent",
+                    translation_placeholders={
+                        "integration": "Proxmox VE",
+                        "platform": DOMAIN,
+                        "host": config_entry.data[CONF_HOST],
+                        "port": config_entry.data[CONF_PORT],
+                        "node": node,
+                        "vm_id": container_id,
+                    },
+                )
 
-                node_coordinators[container_id] = coordinator_lxc
+    hass.data[DOMAIN][config_entry.entry_id] = {
+        PROXMOX_CLIENT: proxmox_client,
+        COORDINATORS: coordinators,
+    }
 
-    for component in PLATFORMS:
-        await hass.async_create_task(
-            async_load_platform(hass, component, DOMAIN, {"config": config}, config)
+    for node in nodes_add_device:
+        device_info(
+            hass=hass,
+            config_entry=config_entry,
+            api_category=ProxmoxType.Node,
+            node=node,
+            create=True,
+        )
+
+    for platform in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, platform)
         )
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
+
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+def device_info(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    api_category: ProxmoxType,
+    node: str | None = None,
+    vm_id: int | None = None,
+    create: bool | None = False,
+):
+    """Return the Device Info."""
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS][node]
+
+    host = config_entry.data[CONF_HOST]
+    port = config_entry.data[CONF_PORT]
+
+    proxmox_version = None
+    if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
+        coordinator = coordinators[vm_id]
+        if (coordinator_data := coordinator.data) is not None:
+            vm_name = coordinator_data.name
+
+        name = f"{node} {vm_name} ({vm_id})"
+        host_port_node_vm = f"{host}_{port}_{node}_{vm_id}"
+        url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
+        via_device = (DOMAIN, f"{host}_{port}_{node}")
+        default_model = api_category.upper()
+
+    elif api_category is ProxmoxType.Node:
+        coordinator = coordinators[CONF_NODE]
+        if (coordinator_data := coordinator.data) is not None:
+            model_processor = coordinator_data.model
+            proxmox_version = f"Proxmox {coordinator_data.version}"
+
+        name = f"Node {node} - {host}:{port}"
+        host_port_node_vm = f"{host}_{port}_{node}"
+        url = f"https://{host}:{port}/#v1:0:=node/{node}"
+        via_device = ("", "")
+        default_model = model_processor
+
+    if create:
+        device_registry = dr.async_get(hass)
+        return device_registry.async_get_or_create(
+            config_entry_id=config_entry.entry_id,
+            entry_type=dr.DeviceEntryType.SERVICE,
+            configuration_url=url,
+            identifiers={(DOMAIN, host_port_node_vm)},
+            default_manufacturer="Proxmox VE",
+            name=name,
+            default_model=default_model,
+            sw_version=proxmox_version,
+            hw_version=None,
+            via_device=via_device,
+        )
+    return DeviceInfo(
+        entry_type=dr.DeviceEntryType.SERVICE,
+        configuration_url=url,
+        identifiers={(DOMAIN, host_port_node_vm)},
+        default_manufacturer="Proxmox VE",
+        name=name,
+        default_model=default_model,
+        sw_version=proxmox_version,
+        hw_version=None,
+        via_device=via_device,
+    )
 
 
 class ProxmoxClient:
@@ -198,11 +420,11 @@ class ProxmoxClient:
     def __init__(
         self,
         host: str,
-        port: int,
         user: str,
-        realm: str,
         password: str,
-        verify_ssl: bool,
+        port: int | None = DEFAULT_PORT,
+        realm: str | None = DEFAULT_REALM,
+        verify_ssl: bool | None = DEFAULT_VERIFY_SSL,
     ) -> None:
         """Initialize the ProxmoxClient."""
 

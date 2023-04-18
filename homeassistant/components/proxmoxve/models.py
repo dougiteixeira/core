@@ -4,8 +4,17 @@ import dataclasses
 
 
 @dataclasses.dataclass
+class ProxmoxNodeData:
+    """Data parsed from the Proxmox API for Node."""
+
+    model: str
+    status: str
+    version: str
+
+
+@dataclasses.dataclass
 class ProxmoxVMData:
-    """All data parsed from the Proxmox API."""
+    """Data parsed from the Proxmox API for QEMU and LXC."""
 
     name: str
     status: str
