@@ -21,15 +21,21 @@ from homeassistant.core import async_get_hass, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
+)
 
 from . import ProxmoxClient
 from .const import (
+    CONF_CONTAINERS,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
+    CONF_VMS,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -360,17 +366,22 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for qemu in qemu_user:
                 qemu_selecition.append(qemu)
 
-        for qemu in self.config_entry.data[CONF_NODES][node][CONF_QEMU]:
-            if qemu not in qemu_selecition:
+        for qemu_id in self.config_entry.data[CONF_NODES][node][CONF_QEMU]:
+            if qemu_id not in qemu_selecition:
                 # Remove device
                 host_port_node_vm = (
                     f"{self.config_entry.data[CONF_HOST]}_"
                     f"{self.config_entry.data[CONF_PORT]}_"
-                    f"{node}_{qemu}"
+                    f"{node}_{qemu_id}"
                 )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=host_port_node_vm,
+                )
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{qemu_id}",
                 )
         self.config_entry.data[CONF_NODES][node][CONF_QEMU] = user_input.get(CONF_QEMU)
 
@@ -393,6 +404,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=host_port_node_vm,
+                )
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{lxc_id}",
                 )
         self.config_entry.data[CONF_NODES][node][CONF_LXC] = user_input.get(CONF_LXC)
 
@@ -457,6 +473,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         entry_id=self.config_entry.entry_id,
                         device_identifier=host_port_node_vm,
                     )
+                    async_delete_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                    )
 
                 config_data: dict[str, Any] = self.config_entry.data.copy()
                 config_data[CONF_NODES].pop(node)
@@ -473,6 +494,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=host_port_node_vm,
+                )
+
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"node_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}",
                 )
 
                 await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -531,27 +558,15 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
 
-        if (
-            f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}"
-            in [
-                f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}_{entry.data.get(CONF_NODE)}"
-                for entry in self._async_current_entries()
-            ]
-        ):
-            LOGGER.warning(
-                (
-                    "The node %s of instance %s:%s already configured, "
-                    "you can remove it from configuration.yaml if you still have it"
-                ),
-                import_config.get(CONF_NODE),
-                import_config.get(CONF_HOST),
-                import_config.get(CONF_PORT),
-            )
+        if f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}" in [
+            f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}"
+            for entry in self._async_current_entries()
+        ]:
             async_create_issue(
                 async_get_hass(),
                 DOMAIN,
-                f"import_already_configured_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}",
-                breaks_in_ha_version="2023.5.0",
+                f"import_already_configured_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
+                breaks_in_ha_version="2023.8.0",
                 is_fixable=False,
                 severity=IssueSeverity.WARNING,
                 translation_key="import_already_configured",
@@ -560,7 +575,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
-                    "node": str(import_config.get(CONF_NODE)),
                 },
             )
             return self.async_abort(reason="import_failed")
@@ -589,7 +603,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 async_get_hass(),
                 DOMAIN,
                 f"import_auth_error_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.5.0",
+                breaks_in_ha_version="2023.8.0",
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_auth_error",
@@ -606,7 +620,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 async_get_hass(),
                 DOMAIN,
                 f"import_ssl_rejection_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.5.0",
+                breaks_in_ha_version="2023.8.0",
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_ssl_rejection",
@@ -623,7 +637,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 async_get_hass(),
                 DOMAIN,
                 f"import_cant_connect_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.5.0",
+                breaks_in_ha_version="2023.8.0",
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_cant_connect",
@@ -640,7 +654,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 async_get_hass(),
                 DOMAIN,
                 f"import_general_error_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.5.0",
+                breaks_in_ha_version="2023.8.0",
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_general_error",
@@ -662,57 +676,56 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             for node in proxmox_nodes:
                 proxmox_nodes_host.append(node[CONF_NODE])
 
-        if import_config.get(CONF_NODE) not in proxmox_nodes_host:
-            LOGGER.warning(
-                "The node %s does not exist of instance %s:%s and will be ignored",
-                import_config.get(CONF_NODE),
-                import_config.get(CONF_HOST),
-                import_config.get(CONF_PORT),
-            )
-            async_create_issue(
-                async_get_hass(),
-                DOMAIN,
-                f"import_node_not_exist_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}",
-                breaks_in_ha_version="2023.5.0",
-                is_fixable=False,
-                severity=IssueSeverity.WARNING,
-                translation_key="import_node_not_exist",
-                translation_placeholders={
-                    "integration": "Proxmox VE",
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                    "node": str(import_config.get(CONF_NODE)),
-                },
-            )
-            return self.async_abort(reason="import_failed")
+        if (
+            CONF_NODES in import_config
+            and (import_nodes := import_config.get(CONF_NODES)) is not None
+        ):
+            import_config[CONF_NODES] = {}
+            for node_data in import_nodes:
+                node = node_data[CONF_NODE]
+                if node in proxmox_nodes_host:
+                    import_config[CONF_NODES][node] = {}
+                    import_config[CONF_NODES][node][CONF_QEMU] = node_data[CONF_VMS]
+                    import_config[CONF_NODES][node][CONF_LXC] = node_data[
+                        CONF_CONTAINERS
+                    ]
+                else:
+                    async_create_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"import_node_not_exist_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}",
+                        breaks_in_ha_version="2023.8.0",
+                        is_fixable=False,
+                        severity=IssueSeverity.WARNING,
+                        translation_key="import_node_not_exist",
+                        translation_placeholders={
+                            "integration": "Proxmox VE",
+                            "platform": DOMAIN,
+                            "host": str(import_config.get(CONF_HOST)),
+                            "port": str(import_config.get(CONF_PORT)),
+                            "node": str(node),
+                        },
+                    )
 
         async_create_issue(
             async_get_hass(),
             DOMAIN,
-            f"import_success_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}",
-            breaks_in_ha_version="2023.5.0",
+            f"import_success_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
+            breaks_in_ha_version="2023.8.0",
             is_fixable=False,
             severity=IssueSeverity.WARNING,
             translation_key="import_success",
             translation_placeholders={
                 "integration": "Proxmox VE",
                 "platform": DOMAIN,
-                "node": str(import_config.get(CONF_NODE)),
                 "host": str(import_config.get(CONF_HOST)),
                 "port": str(import_config.get(CONF_PORT)),
             },
         )
 
-        import_options: dict[str, int] = {}
-
         return self.async_create_entry(
-            title=(
-                f"{import_config.get(CONF_NODE)} - {import_config.get(CONF_HOST)}:"
-                f"{import_config.get(CONF_PORT)}"
-            ),
+            title=(f"{import_config.get(CONF_HOST)}:{import_config.get(CONF_PORT)}"),
             data=import_config,
-            options=import_options,
         )
 
     async def async_step_reauth(self, data: Mapping[str, Any]) -> FlowResult:

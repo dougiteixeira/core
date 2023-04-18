@@ -112,9 +112,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # import to config flow
     if DOMAIN in config:
         LOGGER.warning(
-            # Proxmox VE config flow added and should be removed in 2023.5.
+            # Proxmox VE config flow added and should be removed in 2023.8.
             "Configuration of the Proxmox in YAML is deprecated and should "
-            "be removed in 2023.5. Resolve the import issues and remove the "
+            "be removed in 2023.8. Resolve the import issues and remove the "
             "YAML configuration from your configuration.yaml file",
         )
         async_create_issue(
@@ -197,12 +197,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         ],
     ] = {}
     nodes_add_device = []
+
     for node in config_entry.data[CONF_NODES]:
-        coordinators[node] = {}
         if node in [
             node["node"]
             for node in await hass.async_add_executor_job(proxmox.nodes().get)
         ]:
+            coordinators[node] = {}
             async_delete_issue(
                 async_get_hass(),
                 DOMAIN,
@@ -217,6 +218,87 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_node.async_refresh()
             coordinators[node][CONF_NODE] = coordinator_node
             nodes_add_device.append(node)
+
+            for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
+                if int(vm_id) in [
+                    int(qemu["vmid"])
+                    for qemu in await hass.async_add_executor_job(
+                        proxmox.nodes(node).qemu.get
+                    )
+                ]:
+                    async_delete_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                    )
+                    coordinator_qemu = ProxmoxQEMUCoordinator(
+                        hass=hass,
+                        proxmox=proxmox,
+                        host_name=config_entry.data[CONF_HOST],
+                        node_name=node,
+                        qemu_id=vm_id,
+                    )
+                    await coordinator_qemu.async_refresh()
+                    coordinators[node][vm_id] = coordinator_qemu
+                else:
+                    async_create_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
+                        is_fixable=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key="vm_id_nonexistent",
+                        translation_placeholders={
+                            "integration": "Proxmox VE",
+                            "platform": DOMAIN,
+                            "resource": "VM (QEMU)",
+                            "host": config_entry.data[CONF_HOST],
+                            "port": config_entry.data[CONF_PORT],
+                            "node": node,
+                            "vm_id": vm_id,
+                        },
+                    )
+
+            for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
+                if int(container_id) in [
+                    int(lxc["vmid"])
+                    for lxc in await hass.async_add_executor_job(
+                        proxmox.nodes(node).lxc.get
+                    )
+                ]:
+                    async_delete_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                    )
+                    coordinator_lxc = ProxmoxLXCCoordinator(
+                        hass=hass,
+                        proxmox=proxmox,
+                        host_name=config_entry.data[CONF_HOST],
+                        node_name=node,
+                        container_id=container_id,
+                    )
+                    await coordinator_lxc.async_refresh()
+                    coordinators[node][container_id] = coordinator_lxc
+                else:
+                    async_create_issue(
+                        async_get_hass(),
+                        DOMAIN,
+                        f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
+                        is_fixable=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key="vm_id_nonexistent",
+                        translation_placeholders={
+                            "integration": "Proxmox VE",
+                            "platform": DOMAIN,
+                            "resource": "Container (LXC)",
+                            "host": config_entry.data[CONF_HOST],
+                            "port": config_entry.data[CONF_PORT],
+                            "node": node,
+                            "vm_id": container_id,
+                        },
+                    )
+
         else:
             async_create_issue(
                 async_get_hass(),
@@ -233,84 +315,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "node": node,
                 },
             )
-
-    for node in config_entry.data[CONF_NODES]:
-        for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
-            if vm_id in [
-                str(qemu["vmid"])
-                for qemu in await hass.async_add_executor_job(
-                    proxmox.nodes(node).qemu.get
-                )
-            ]:
-                async_delete_issue(
-                    async_get_hass(),
-                    DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
-                )
-                coordinator_qemu = ProxmoxQEMUCoordinator(
-                    hass=hass,
-                    proxmox=proxmox,
-                    host_name=config_entry.data[CONF_HOST],
-                    node_name=node,
-                    qemu_id=vm_id,
-                )
-                await coordinator_qemu.async_refresh()
-                coordinators[node][vm_id] = coordinator_qemu
-            else:
-                async_create_issue(
-                    async_get_hass(),
-                    DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{vm_id}",
-                    is_fixable=False,
-                    severity=IssueSeverity.ERROR,
-                    translation_key="vm_id_nonexistent",
-                    translation_placeholders={
-                        "integration": "Proxmox VE",
-                        "platform": DOMAIN,
-                        "host": config_entry.data[CONF_HOST],
-                        "port": config_entry.data[CONF_PORT],
-                        "node": node,
-                        "vm_id": vm_id,
-                    },
-                )
-        for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
-            if container_id in [
-                str(lxc["vmid"])
-                for lxc in await hass.async_add_executor_job(
-                    proxmox.nodes(node).lxc.get
-                )
-            ]:
-                async_delete_issue(
-                    async_get_hass(),
-                    DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
-                )
-                coordinator_lxc = ProxmoxLXCCoordinator(
-                    hass=hass,
-                    proxmox=proxmox,
-                    host_name=config_entry.data[CONF_HOST],
-                    node_name=node,
-                    container_id=container_id,
-                )
-                await coordinator_lxc.async_refresh()
-                coordinators[node][container_id] = coordinator_lxc
-            else:
-                async_create_issue(
-                    async_get_hass(),
-                    DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{node}_{container_id}",
-                    is_fixable=False,
-                    severity=IssueSeverity.ERROR,
-                    translation_key="vm_id_nonexistent",
-                    translation_placeholders={
-                        "integration": "Proxmox VE",
-                        "platform": DOMAIN,
-                        "host": config_entry.data[CONF_HOST],
-                        "port": config_entry.data[CONF_PORT],
-                        "node": node,
-                        "vm_id": container_id,
-                    },
-                )
 
     hass.data[DOMAIN][config_entry.entry_id] = {
         PROXMOX_CLIENT: proxmox_client,

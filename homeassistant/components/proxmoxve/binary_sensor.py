@@ -25,51 +25,60 @@ async def async_setup_entry(
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for node in config_entry.data[CONF_NODES]:
-        for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
-            coordinator = coordinators[node][vm_id]
+        if node in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]:
+            for vm_id in config_entry.data[CONF_NODES][node][CONF_QEMU]:
+                if (
+                    vm_id
+                    in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS][node]
+                ):
+                    coordinator = coordinators[node][vm_id]
 
-            # unfound vm case
-            if coordinator.data is None:
-                continue
+                    # unfound vm case
+                    if coordinator.data is None:
+                        continue
 
-            vm_sensor = create_binary_sensor(
-                coordinator=coordinator,
-                vm_id=vm_id,
-                key="status",
-                name="Status",
-                config_entry=config_entry,
-                info_device=device_info(
-                    hass=hass,
-                    config_entry=config_entry,
-                    api_category=ProxmoxType.QEMU,
-                    node=node,
-                    vm_id=vm_id,
-                ),
-            )
-            sensors.append(vm_sensor)
+                    vm_sensor = create_binary_sensor(
+                        coordinator=coordinator,
+                        vm_id=vm_id,
+                        key="status",
+                        name="Status",
+                        config_entry=config_entry,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.QEMU,
+                            node=node,
+                            vm_id=vm_id,
+                        ),
+                    )
+                    sensors.append(vm_sensor)
 
-        for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
-            coordinator = coordinators[node][container_id]
+            for container_id in config_entry.data[CONF_NODES][node][CONF_LXC]:
+                if (
+                    container_id
+                    in hass.data[DOMAIN][config_entry.entry_id][COORDINATORS][node]
+                ):
+                    coordinator = coordinators[node][container_id]
 
-            # unfound container case
-            if coordinator.data is None:
-                continue
+                    # unfound container case
+                    if coordinator.data is None:
+                        continue
 
-            container_sensor = create_binary_sensor(
-                coordinator=coordinator,
-                vm_id=container_id,
-                key="status",
-                name="Status",
-                config_entry=config_entry,
-                info_device=device_info(
-                    hass=hass,
-                    config_entry=config_entry,
-                    api_category=ProxmoxType.LXC,
-                    node=node,
-                    vm_id=container_id,
-                ),
-            )
-            sensors.append(container_sensor)
+                    container_sensor = create_binary_sensor(
+                        coordinator=coordinator,
+                        vm_id=container_id,
+                        key="status",
+                        name="Status",
+                        config_entry=config_entry,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.LXC,
+                            node=node,
+                            vm_id=container_id,
+                        ),
+                    )
+                    sensors.append(container_sensor)
 
     async_add_entities(sensors)
 
