@@ -27,7 +27,7 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 
-from . import ProxmoxClient
+from . import ProxmoxClient, ProxmoxType
 from .const import (
     CONF_CONTAINERS,
     CONF_LXC,
@@ -82,9 +82,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="menu",
             menu_options=[
                 "host_auth",
-                "add_node",
-                "change_selection_qemu_lxc",
-                "remove_node",
+                "change_expose",
             ],
         )
 
@@ -167,7 +165,28 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             if node in current_nodes:
                 return self.async_abort(reason="node_already_exists")
 
-            return await self.async_step_selection_qemu_lxc(node=node)
+            config_data: dict[str, Any] = (
+                self.config_entry.data.copy()
+                if self.config_entry.data is not None
+                else {}
+            )
+
+            current_nodes.append(node)
+            config_data.update(
+                {
+                    CONF_NODES: current_nodes,
+                }
+            )
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=config_data
+            )
+
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+            return self.async_abort(reason="changes_successful")
+
+            # return await self.async_step_selection_qemu_lxc(node=node)
 
         host = self.config_entry.data[CONF_HOST]
         port = self.config_entry.data[CONF_PORT]
@@ -216,9 +235,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 if len(nodes) == 0:
                     return self.async_abort(reason="no_nodes_to_add")
 
-                if len(nodes) == 1:
-                    for node in nodes:
-                        return await self.async_step_selection_qemu_lxc(node=node)
+                # if len(nodes) == 1:
+                #     for node in nodes:
+                #         return await self.async_step_selection_qemu_lxc(node=node)
 
                 return self.async_show_form(
                     step_id="add_node",
@@ -232,46 +251,20 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_abort(reason="no_nodes")
 
-    async def async_step_change_selection_qemu_lxc(
+    async def async_step_change_expose(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> FlowResult:
-        """Handle the QEMU/LXC selection step."""
-
-        errors: dict[str, str] = {}
-
-        if user_input:
-            return await self.async_step_selection_qemu_lxc(
-                node=user_input.get(CONF_NODE)
-            )
-
-        if len(self.config_entry.data[CONF_NODES]) == 1:
-            return await self.async_step_selection_qemu_lxc(
-                node=self.config_entry.data[CONF_NODES][0]
-            )
-
-        nodes = []
-        for node in self.config_entry.data[CONF_NODES]:
-            nodes.append(node)
-
-        return self.async_show_form(
-            step_id="change_selection_qemu_lxc",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_NODE): vol.In(nodes),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_selection_qemu_lxc(
-        self,
-        user_input: dict[str, Any] | None = None,
-        node: str | None = None,
-    ) -> FlowResult:
-        """Handle the QEMU/LXC selection step."""
+        """Handle the Node/QEMU/LXC selection step."""
 
         if user_input is None:
+            old_nodes = []
+            resource_nodes = []
+
+            for node in self.config_entry.data[CONF_NODES]:
+                old_nodes.append(node)
+                resource_nodes.append(node)
+
             old_qemu = []
 
             for qemu in self.config_entry.data[CONF_QEMU]:
@@ -312,35 +305,41 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             proxmox = self._proxmox_client.get_api_client()
 
+            resources = await self.hass.async_add_executor_job(
+                proxmox.cluster.resources.get
+            )
+            resource_qemu = {}
+            resource_lxc = {}
+            for resource in resources:
+                if ("type" in resource) and (resource["type"] == ProxmoxType.Node):
+                    if resource["node"] not in resource_nodes:
+                        resource_nodes.append(resource["node"])
+                if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
+                    resource_qemu[
+                        str(resource["vmid"])
+                    ] = f"{resource['vmid']} {resource['name']}"
+                if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
+                    resource_lxc[
+                        str(resource["vmid"])
+                    ] = f"{resource['vmid']} {resource['name']}"
+
             return self.async_show_form(
-                step_id="selection_qemu_lxc",
+                step_id="change_expose",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_NODE): node,
+                        vol.Optional(CONF_NODES, default=old_nodes): cv.multi_select(
+                            resource_nodes,
+                        ),
                         vol.Optional(CONF_QEMU, default=old_qemu): cv.multi_select(
                             {
                                 **dict.fromkeys(old_qemu),
-                                **{
-                                    str(
-                                        qemu["vmid"]
-                                    ): f"{qemu['vmid']} {qemu['name'] if 'name' in qemu else None}"
-                                    for qemu in await self.hass.async_add_executor_job(
-                                        proxmox.nodes(node).qemu.get
-                                    )
-                                },
+                                **resource_qemu,
                             }
                         ),
                         vol.Optional(CONF_LXC, default=old_lxc): cv.multi_select(
                             {
                                 **dict.fromkeys(old_lxc),
-                                **{
-                                    str(
-                                        lxc["vmid"]
-                                    ): f"{lxc['vmid']} {lxc['name'] if 'name' in lxc else None}"
-                                    for lxc in await self.hass.async_add_executor_job(
-                                        proxmox.nodes(node).lxc.get
-                                    )
-                                },
+                                **resource_lxc,
                             }
                         ),
                     }
@@ -350,7 +349,32 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         config_data: dict[str, Any] = (
             self.config_entry.data.copy() if self.config_entry.data is not None else {}
         )
-        node = user_input.get(CONF_NODE)
+
+        node_selecition = []
+        if (
+            CONF_NODES in user_input
+            and (node_user := user_input.get(CONF_NODES)) is not None
+        ):
+            for node in node_user:
+                node_selecition.append(node)
+
+        for node in self.config_entry.data[CONF_NODES]:
+            if node not in node_selecition:
+                # Remove device
+                host_port_node_vm = (
+                    f"{self.config_entry.data[CONF_HOST]}_"
+                    f"{self.config_entry.data[CONF_PORT]}_"
+                    f"{node}"
+                )
+                await self.async_remove_device(
+                    entry_id=self.config_entry.entry_id,
+                    device_identifier=host_port_node_vm,
+                )
+                async_delete_issue(
+                    async_get_hass(),
+                    DOMAIN,
+                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}",
+                )
 
         qemu_selecition = []
         if (
@@ -405,6 +429,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 )
         config_data.update(
             {
+                CONF_NODES: node_selecition,
                 CONF_QEMU: qemu_selecition,
                 CONF_LXC: lxc_selecition,
             }
@@ -415,103 +440,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
         return self.async_abort(reason="changes_successful")
-
-    async def async_step_remove_node(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
-        """Handle the QEMU/LXC selection step."""
-
-        errors: dict[str, str] = {}
-
-        if user_input:
-            return await self.async_step_remove_node_confirm(
-                node=user_input.get(CONF_NODE)
-            )
-
-        nodes = []
-        for node in self.config_entry.data[CONF_NODES]:
-            nodes.append(node)
-
-        return self.async_show_form(
-            step_id="remove_node",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_NODE): vol.In(nodes),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_remove_node_confirm(
-        self,
-        user_input: dict[str, Any] | None = None,
-        node: str | None = None,
-    ) -> FlowResult:
-        """Handle the QEMU/LXC selection step."""
-        errors = {}
-        if user_input is not None:
-            node = user_input.get(CONF_NODE)
-            if user_input.get("confirm_remove") is False:
-                errors["confirm_remove"] = "confirm_remove_false"
-            else:
-                for vm_id in (
-                    *self.config_entry.data[CONF_QEMU],
-                    *self.config_entry.data[CONF_LXC],
-                ):
-                    # Remove device QEMU and LXC
-                    host_port_node_vm = (
-                        f"{self.config_entry.data[CONF_HOST]}_"
-                        f"{self.config_entry.data[CONF_PORT]}_"
-                        f"{vm_id}"
-                    )
-                    await self.async_remove_device(
-                        entry_id=self.config_entry.entry_id,
-                        device_identifier=host_port_node_vm,
-                    )
-                    async_delete_issue(
-                        async_get_hass(),
-                        DOMAIN,
-                        f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{vm_id}",
-                    )
-
-                config_data: dict[str, Any] = self.config_entry.data.copy()
-                config_data[CONF_NODES].pop(node)
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=config_data
-                )
-
-                # Remove device node
-                host_port_node_vm = (
-                    f"{self.config_entry.data[CONF_HOST]}_"
-                    f"{self.config_entry.data[CONF_PORT]}_"
-                    f"{node}"
-                )
-                await self.async_remove_device(
-                    entry_id=self.config_entry.entry_id,
-                    device_identifier=host_port_node_vm,
-                )
-
-                async_delete_issue(
-                    async_get_hass(),
-                    DOMAIN,
-                    f"node_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}",
-                )
-
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
-                return self.async_abort(reason="changes_successful")
-
-        return self.async_show_form(
-            step_id="remove_node_confirm",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_NODE): node,
-                    vol.Required("confirm_remove"): bool,
-                }
-            ),
-            errors=errors,
-        )
 
     async def async_remove_device(
         self,
@@ -681,10 +609,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 node = node_data[CONF_NODE]
                 if node in proxmox_nodes_host:
                     import_config[CONF_NODES].append(node)
-                    import_config[CONF_NODES][node][CONF_QEMU] = node_data[CONF_VMS]
-                    import_config[CONF_NODES][node][CONF_LXC] = node_data[
-                        CONF_CONTAINERS
-                    ]
+                    import_config[CONF_QEMU] = node_data[CONF_VMS]
+                    import_config[CONF_LXC] = node_data[CONF_CONTAINERS]
                 else:
                     async_create_issue(
                         async_get_hass(),
@@ -769,22 +695,20 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_BASE] = "general_error"
 
             else:
-                if CONF_HOST in self._reauth_entry.data:
-                    user_input[CONF_HOST] = self._reauth_entry.data[CONF_HOST]
-                if CONF_PORT in self._reauth_entry.data:
-                    user_input[CONF_PORT] = self._reauth_entry.data[CONF_PORT]
-                if CONF_VERIFY_SSL in self._reauth_entry.data:
-                    user_input[CONF_VERIFY_SSL] = self._reauth_entry.data[
-                        CONF_VERIFY_SSL
-                    ]
-                if CONF_NODE in self._reauth_entry.data:
-                    user_input[CONF_NODE] = self._reauth_entry.data[CONF_NODE]
-                if CONF_QEMU in self._reauth_entry.data:
-                    user_input[CONF_QEMU] = self._reauth_entry.data[CONF_QEMU]
-                if CONF_LXC in self._reauth_entry.data:
-                    user_input[CONF_LXC] = self._reauth_entry.data[CONF_LXC]
+                config_data: dict[str, Any] = (
+                    self._reauth_entry.data.copy()
+                    if self._reauth_entry.data is not None
+                    else {}
+                )
+                config_data.update(
+                    {
+                        CONF_USERNAME: user_input.get(CONF_USERNAME),
+                        CONF_PASSWORD: user_input.get(CONF_PASSWORD),
+                        CONF_REALM: user_input.get(CONF_REALM),
+                    }
+                )
                 self.hass.config_entries.async_update_entry(
-                    self._reauth_entry, data=user_input
+                    self._reauth_entry, data=config_data
                 )
                 await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
@@ -792,7 +716,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=self.add_suggested_values_to_schema(
-                SCHEMA_HOST_AUTH, self._reauth_entry.data
+                SCHEMA_HOST_AUTH, user_input or self._reauth_entry.data
             ),
             errors=errors,
         )
@@ -810,6 +734,15 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input:
+            if (
+                f"{user_input.get(CONF_HOST)}_{user_input.get(CONF_PORT, DEFAULT_PORT)}"
+                in [
+                    f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}"
+                    for entry in self._async_current_entries()
+                ]
+            ):
+                return self.async_abort(reason="already_configured")
+
             host = user_input.get(CONF_HOST, "")
             port = user_input.get(CONF_PORT, DEFAULT_PORT)
             username = user_input.get(CONF_USERNAME, "")
@@ -854,7 +787,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._config[CONF_REALM] = realm
                     self._config[CONF_VERIFY_SSL] = verify_ssl
 
-                    return await self.async_step_node()
+                    return await self.async_step_expose()
 
         return self.async_show_form(
             step_id="host",
@@ -864,91 +797,58 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_node(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
-        """Handle the node selection step."""
-
-        errors: dict[str, str] = {}
-
-        if user_input:
-            if (
-                f"{self._config[CONF_HOST]}_{self._config[CONF_PORT]}_{user_input.get(CONF_NODE)}"
-                in [
-                    f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}_{entry.data.get(CONF_NODE)}"
-                    for entry in self._async_current_entries()
-                ]
-            ):
-                return self.async_abort(reason="already_configured")
-
-            self._config[CONF_NODES] = []
-            node = user_input.get(CONF_NODE)
-            self._config[CONF_NODES].append(node)
-            return await self.async_step_selection_qemu_lxc(node=node)
-
-        nodes = []
-        if (proxmox_cliente := self._proxmox_client) is not None:
-            if proxmox := (proxmox_cliente.get_api_client()):
-                proxmox_nodes = await self.hass.async_add_executor_job(
-                    proxmox.nodes.get
-                )
-
-                for node in proxmox_nodes:
-                    nodes.append(node[CONF_NODE])
-
-        return self.async_show_form(
-            step_id="node",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_NODE): vol.In(nodes),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_selection_qemu_lxc(
+    async def async_step_expose(
         self,
         user_input: dict[str, Any] | None = None,
         node: str | None = None,
     ) -> FlowResult:
-        """Handle the QEMU/LXC selection step."""
+        """Handle the Node/QEMU/LXC selection step."""
 
         if user_input is None:
             if (proxmox_cliente := self._proxmox_client) is not None:
                 proxmox = proxmox_cliente.get_api_client()
 
+            resources = await self.hass.async_add_executor_job(
+                proxmox.cluster.resources.get
+            )
+            resource_nodes = []
+            resource_qemu = {}
+            resource_lxc = {}
+            if resources is None:
+                return self.async_abort(reason="no_resources")
+            for resource in resources:
+                if ("type" in resource) and (resource["type"] == ProxmoxType.Node):
+                    if resource["node"] not in resource_nodes:
+                        resource_nodes.append(resource["node"])
+                if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
+                    resource_qemu[
+                        str(resource["vmid"])
+                    ] = f"{resource['vmid']} {resource['name']}"
+                if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
+                    resource_lxc[
+                        str(resource["vmid"])
+                    ] = f"{resource['vmid']} {resource['name']}"
+
             return self.async_show_form(
-                step_id="selection_qemu_lxc",
+                step_id="expose",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_NODE): node,
-                        vol.Optional(CONF_QEMU): cv.multi_select(
-                            {
-                                str(qemu["vmid"]): (
-                                    f"{qemu['vmid']} "
-                                    f"{qemu['name'] if 'name' in qemu else None}"
-                                )
-                                for qemu in await self.hass.async_add_executor_job(
-                                    proxmox.nodes(node).qemu.get
-                                )
-                            }
-                        ),
-                        vol.Optional(CONF_LXC): cv.multi_select(
-                            {
-                                str(
-                                    lxc["vmid"]
-                                ): f"{lxc['vmid']} {lxc['name'] if 'name' in lxc else None}"
-                                for lxc in await self.hass.async_add_executor_job(
-                                    proxmox.nodes(node).lxc.get
-                                )
-                            }
-                        ),
+                        vol.Required(CONF_NODES): cv.multi_select(resource_nodes),
+                        vol.Optional(CONF_QEMU): cv.multi_select(resource_qemu),
+                        vol.Optional(CONF_LXC): cv.multi_select(resource_lxc),
                     }
                 ),
             )
 
-        node = str(user_input.get(CONF_NODE))
+        if CONF_NODES not in self._config:
+            self._config[CONF_NODES] = []
+        if (
+            CONF_NODES in user_input
+            and (node_user := user_input.get(CONF_NODES)) is not None
+        ):
+            for node_selection in node_user:
+                self._config[CONF_NODES].append(node_selection)
+
         if CONF_QEMU not in self._config:
             self._config[CONF_QEMU] = []
         if (

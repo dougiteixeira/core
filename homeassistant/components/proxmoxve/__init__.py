@@ -131,13 +131,29 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             },
         )
         for conf in config[DOMAIN]:
-            hass.async_create_task(
-                hass.config_entries.flow.async_init(
+            if conf.get(CONF_PORT) > 65535 or conf.get(CONF_PORT) <= 0:
+                async_create_issue(
+                    async_get_hass(),
                     DOMAIN,
-                    context={"source": SOURCE_IMPORT},
-                    data=conf,
+                    f"import_invalid_port_{DOMAIN}_{conf.get[CONF_HOST]}_{conf.get[CONF_PORT]}",
+                    is_fixable=False,
+                    severity=IssueSeverity.ERROR,
+                    translation_key="import_invalid_port",
+                    translation_placeholders={
+                        "integration": "Proxmox VE",
+                        "platform": DOMAIN,
+                        "host": conf.get[CONF_HOST],
+                        "port": conf.get[CONF_PORT],
+                    },
                 )
-            )
+            else:
+                hass.async_create_task(
+                    hass.config_entries.flow.async_init(
+                        DOMAIN,
+                        context={"source": SOURCE_IMPORT},
+                        data=conf,
+                    )
+                )
     return True
 
 
@@ -196,12 +212,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     nodes_add_device = []
 
     resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
-    LOGGER.warning("API Response - Resources: %s", resources)
 
     for node in config_entry.data[CONF_NODES]:
         if node in [
-            node["node"]
-            for node in await hass.async_add_executor_job(proxmox.nodes().get)
+            node_proxmox["node"]
+            for node_proxmox in await hass.async_add_executor_job(proxmox.nodes().get)
         ]:
             async_delete_issue(
                 async_get_hass(),
@@ -363,6 +378,7 @@ def device_info(
         coordinator = coordinators[vm_id]
         if (coordinator_data := coordinator.data) is not None:
             vm_name = coordinator_data.name
+            node = coordinator_data.node
 
         name = f"{api_category.upper()} {vm_name} ({vm_id})"
         host_port_node_vm = f"{host}_{port}_{vm_id}"
@@ -376,7 +392,7 @@ def device_info(
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
 
-        name = f"Node {node} - {host}:{port}"
+        name = f"Node {node}"
         host_port_node_vm = f"{host}_{port}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = ("", "")

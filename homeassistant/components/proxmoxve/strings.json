@@ -13,15 +13,8 @@
           "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
         }
       },
-      "node": {
-        "title": "Proxmox node selection",
-        "description": "Select the Proxmox instance nodes you want to expose.\n\nIf you want to add more than one node, access the integration configuration entry options after adding the first node is complete.",
-        "data": {
-          "node": "Node:"
-        }
-      },
-      "selection_qemu_lxc": {
-        "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):",
+      "expose": {
+        "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose.",
         "description": "Select the virtual machines and containers to expose:",
         "data": {
           "node": "Node",
@@ -48,7 +41,7 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-      "no_nodes": "No nodes were returned for the host."
+      "no_resources": "No resources were returned for this instance."
     }
   },
   "issues": {
@@ -102,9 +95,7 @@
       "menu": {
         "menu_options": {
           "host_auth": "Change host authentication information",
-          "add_node": "Add a new node",
-          "change_selection_qemu_lxc": "Add or remove VMs from an existing node",
-          "remove_node": "Remove a node"
+          "change_expose": "Add or remove Nodes, VMs or Containers"
         }
       },
       "host_auth": {
@@ -117,41 +108,13 @@
           "verify_ssl": "[%key:component::proxmoxve::config::step::host::data::verify_ssl%]"
         }
       },
-      "selection_qemu_lxc": {
-        "title": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::title%]",
-        "description": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::description%]",
+      "change_expose": {
+        "title": "[%key:component::proxmoxve::config::step::expose::title%]",
+        "description": "[%key:component::proxmoxve::config::step::expose::description%]",
         "data": {
-          "node": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::node%]",
-          "qemu": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::qemu%]",
-          "lxc": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::lxc%]"
-        }
-      },
-      "change_selection_qemu_lxc": {
-        "title": "[%key:component::proxmoxve::options::step::selection_qemu_lxc::title%]",
-        "description": "Select the node you want to change VMs/containers:",
-        "data": {
-          "node": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::node%]"
-        }
-      },
-      "add_node": {
-        "title": "Add node:",
-        "data": {
-          "node": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::node%]",
-          "confirm_remove": "Select the node you want to add to the integration."
-        }
-      },
-      "remove_node": {
-        "title": "Remove node",
-        "description": "Select the node that you want to remove from the integration.",
-        "data": {
-          "node": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::node%]"
-        }
-      },
-      "remove_node_confirm": {
-        "title": "Removal Confirmation:",
-        "data": {
-          "node": "[%key:component::proxmoxve::config::step::selection_qemu_lxc::data::node%]",
-          "confirm_remove": "I confirm the removal of node and all VM/containers linked to it from the integration."
+          "nodes": "[%key:component::proxmoxve::config::step::expose::data::node%]",
+          "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
+          "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]"
         }
       }
     },
@@ -160,8 +123,7 @@
       "ssl_rejection": "[%key:component::proxmoxve::config::error::ssl_rejection%]",
       "cant_connect": "[%key:component::proxmoxve::config::error::cant_connect%]",
       "general_error": "[%key:component::proxmoxve::config::error::general_error%]",
-      "invalid_port": "[%key:component::proxmoxve::config::error::invalid_port%]",
-      "confirm_remove_false": "It is necessary to confirm the removal of the integration node."
+      "invalid_port": "[%key:component::proxmoxve::config::error::invalid_port%]"
     },
     "abort": {
       "no_nodes": "No nodes were returned for the host.",

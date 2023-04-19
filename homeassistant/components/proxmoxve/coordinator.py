@@ -8,10 +8,13 @@ from proxmoxer import AuthenticationError, ProxmoxAPI
 from proxmoxer.core import ResourceException
 from requests.exceptions import ConnectTimeout, SSLError
 
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_NODE, LOGGER, UPDATE_INTERVAL
+from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL
 from .models import ProxmoxNodeData, ProxmoxVMData
 
 
@@ -104,7 +107,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         self.hass = hass
         self.proxmox = proxmox
         self.node_name: str
-        self.qemu_id = qemu_id
+        self.vm_id = qemu_id
 
     async def _async_update_data(self) -> ProxmoxVMData:
         """Update data  for Proxmox QEMU."""
@@ -120,14 +123,14 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
                 for resource in resources:
                     if "vmid" in resource:
-                        if int(resource["vmid"]) == int(self.qemu_id):
+                        if int(resource["vmid"]) == int(self.vm_id):
                             node_name = resource["node"]
 
                 self.node_name = str(node_name)
                 if self.node_name is not None:
                     api_status = (
                         self.proxmox.nodes(self.node_name)
-                        .qemu(self.qemu_id)
+                        .qemu(self.vm_id)
                         .status.current.get()
                     )
 
@@ -143,12 +146,14 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
         api_status = await self.hass.async_add_executor_job(poll_api)
         if api_status is None:
-            raise UpdateFailed(f"Vm/Container {self.qemu_id} unable to be found")
+            raise UpdateFailed(f"Vm/Container {self.vm_id} unable to be found")
+
+        update_device_via(self)
 
         return ProxmoxVMData(
             status=api_status["status"],
             name=api_status["name"],
-            node="",
+            node=self.node_name,
         )
 
 
@@ -173,7 +178,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
 
         self.hass = hass
         self.proxmox = proxmox
-        self.container_id = container_id
+        self.vm_id = container_id
         self.node_name: str
 
     async def _async_update_data(self) -> ProxmoxVMData:
@@ -190,14 +195,14 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
 
                 for resource in resources:
                     if "vmid" in resource:
-                        if int(resource["vmid"]) == int(self.container_id):
+                        if int(resource["vmid"]) == int(self.vm_id):
                             node_name = resource["node"]
 
                 self.node_name = str(node_name)
                 if node_name is not None:
                     api_status = (
                         self.proxmox.nodes(self.node_name)
-                        .lxc(self.container_id)
+                        .lxc(self.vm_id)
                         .status.current.get()
                     )
 
@@ -214,10 +219,51 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         api_status = await self.hass.async_add_executor_job(poll_api)
 
         if api_status is None:
-            raise UpdateFailed(f"Vm/Container {self.container_id} unable to be found")
+            raise UpdateFailed(f"Vm/Container {self.vm_id} unable to be found")
+
+        update_device_via(self)
 
         return ProxmoxVMData(
             status=api_status["status"],
             name=api_status["name"],
             node=self.node_name,
+        )
+
+
+def update_device_via(self) -> None:
+    """Return the Device Info."""
+    dev_reg = dr.async_get(self.hass)
+    device = dev_reg.async_get_or_create(
+        config_entry_id=self.config_entry.entry_id,
+        identifiers={
+            (
+                DOMAIN,
+                f"{self.config_entry.data[CONF_HOST]}_"
+                f"{self.config_entry.data[CONF_PORT]}_"
+                f"{self.vm_id}",
+            )
+        },
+    )
+    via_device = dev_reg.async_get_device(
+        {
+            (
+                DOMAIN,
+                f"{self.config_entry.data[CONF_HOST]}_"
+                f"{self.config_entry.data[CONF_PORT]}_"
+                f"{self.node_name}",
+            )
+        }
+    )
+    via_device_id: str | UndefinedType = via_device.id if via_device else UNDEFINED
+    if device.via_device_id is not via_device_id:
+        LOGGER.debug(
+            "Update device %s - connected via device: old=%s, new=%s",
+            self.vm_id,
+            device.via_device_id,
+            via_device_id,
+        )
+        dev_reg.async_update_device(
+            device.id,
+            via_device_id=via_device_id,
+            entry_type=dr.DeviceEntryType.SERVICE,
         )
