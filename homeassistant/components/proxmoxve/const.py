@@ -28,3 +28,5 @@ CONF_REALM = "realm"
 CONF_VMS = "vms"
 
 PROXMOX_CLIENT = "proxmox_client"
+
+VERSION_REMOVE_YAML = "2023.8"

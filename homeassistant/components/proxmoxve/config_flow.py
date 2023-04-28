@@ -17,7 +17,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.core import async_get_hass, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
@@ -41,6 +41,7 @@ from .const import (
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     LOGGER,
+    VERSION_REMOVE_YAML,
 )
 
 SCHEMA_HOST_BASE: vol.Schema = vol.Schema(
@@ -371,9 +372,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     device_identifier=host_port_node_vm,
                 )
                 async_delete_issue(
-                    async_get_hass(),
+                    self.hass,
                     DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{node}",
+                    f"{DOMAIN}_{self.config_entry.entry_id}_{node}_resource_nonexistent",
                 )
 
         qemu_selecition = []
@@ -397,9 +398,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     device_identifier=host_port_node_vm,
                 )
                 async_delete_issue(
-                    async_get_hass(),
+                    self.hass,
                     DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{qemu_id}",
+                    f"{DOMAIN}_{self.config_entry.entry_id}_{qemu_id}_resource_nonexistent",
                 )
 
         lxc_selecition = []
@@ -423,9 +424,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     device_identifier=host_port_node_vm,
                 )
                 async_delete_issue(
-                    async_get_hass(),
+                    self.hass,
                     DOMAIN,
-                    f"vm_id_nonexistent_{DOMAIN}_{self.config_entry.data[CONF_HOST]}_{self.config_entry.data[CONF_PORT]}_{lxc_id}",
+                    f"{DOMAIN}_{self.config_entry.entry_id}_{lxc_id}_resource_nonexistent",
                 )
         config_data.update(
             {
@@ -487,10 +488,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             for entry in self._async_current_entries()
         ]:
             async_create_issue(
-                async_get_hass(),
+                self.hass,
                 DOMAIN,
-                f"import_already_configured_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.8.0",
+                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_already_configured",
+                breaks_in_ha_version=VERSION_REMOVE_YAML,
                 is_fixable=False,
                 severity=IssueSeverity.WARNING,
                 translation_key="import_already_configured",
@@ -524,10 +525,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except proxmoxer.backends.https.AuthenticationError:
             errors[CONF_USERNAME] = "auth_error"
             async_create_issue(
-                async_get_hass(),
+                self.hass,
                 DOMAIN,
-                f"import_auth_error_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.8.0",
+                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_auth_error",
+                breaks_in_ha_version=VERSION_REMOVE_YAML,
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_auth_error",
@@ -541,10 +542,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except SSLError:
             errors[CONF_VERIFY_SSL] = "ssl_rejection"
             async_create_issue(
-                async_get_hass(),
+                self.hass,
                 DOMAIN,
-                f"import_ssl_rejection_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.8.0",
+                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_ssl_rejection",
+                breaks_in_ha_version=VERSION_REMOVE_YAML,
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_ssl_rejection",
@@ -558,10 +559,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except ConnectTimeout:
             errors[CONF_HOST] = "cant_connect"
             async_create_issue(
-                async_get_hass(),
+                self.hass,
                 DOMAIN,
-                f"import_cant_connect_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.8.0",
+                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_cant_connect",
+                breaks_in_ha_version=VERSION_REMOVE_YAML,
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_cant_connect",
@@ -575,10 +576,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception:  # pylint: disable=broad-except
             errors[CONF_BASE] = "general_error"
             async_create_issue(
-                async_get_hass(),
+                self.hass,
                 DOMAIN,
-                f"import_general_error_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-                breaks_in_ha_version="2023.8.0",
+                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_general_error",
+                breaks_in_ha_version=VERSION_REMOVE_YAML,
                 is_fixable=False,
                 severity=IssueSeverity.ERROR,
                 translation_key="import_general_error",
@@ -613,10 +614,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     import_config[CONF_LXC] = node_data[CONF_CONTAINERS]
                 else:
                     async_create_issue(
-                        async_get_hass(),
+                        self.hass,
                         DOMAIN,
-                        f"import_node_not_exist_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}",
-                        breaks_in_ha_version="2023.8.0",
+                        f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}_import_node_not_exist",
+                        breaks_in_ha_version=VERSION_REMOVE_YAML,
                         is_fixable=False,
                         severity=IssueSeverity.WARNING,
                         translation_key="import_node_not_exist",
@@ -630,10 +631,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
 
         async_create_issue(
-            async_get_hass(),
+            self.hass,
             DOMAIN,
-            f"import_success_{DOMAIN}_{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}",
-            breaks_in_ha_version="2023.8.0",
+            f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_success",
+            breaks_in_ha_version=VERSION_REMOVE_YAML,
             is_fixable=False,
             severity=IssueSeverity.WARNING,
             translation_key="import_success",
