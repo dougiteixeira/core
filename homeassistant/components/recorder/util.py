@@ -199,6 +199,7 @@ def execute_stmt_lambda_element(
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     yield_per: int = DEFAULT_YIELD_STATES_ROWS,
+    orm_rows: bool = True,
 ) -> Sequence[Row] | Result:
     """Execute a StatementLambdaElement.
 
@@ -211,10 +212,13 @@ def execute_stmt_lambda_element(
     specific entities) since they are usually faster
     with .all().
     """
-    executed = session.execute(stmt)
     use_all = not start_time or ((end_time or dt_util.utcnow()) - start_time).days <= 1
     for tryno in range(RETRIES):
         try:
+            if orm_rows:
+                executed = session.execute(stmt)
+            else:
+                executed = session.connection().execute(stmt)
             if use_all:
                 return executed.all()
             return executed.yield_per(yield_per)
@@ -274,9 +278,11 @@ def basic_sanity_check(cursor: SQLiteCursor) -> bool:
 
     for table in TABLES_TO_CHECK:
         if table in (TABLE_RECORDER_RUNS, TABLE_SCHEMA_CHANGES):
-            cursor.execute(f"SELECT * FROM {table};")  # nosec # not injection
+            cursor.execute(f"SELECT * FROM {table};")  # noqa: S608 # not injection
         else:
-            cursor.execute(f"SELECT * FROM {table} LIMIT 1;")  # nosec # not injection
+            cursor.execute(
+                f"SELECT * FROM {table} LIMIT 1;"  # noqa: S608 # not injection
+            )
 
     return True
 
