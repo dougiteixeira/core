@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.sensor import (
     DOMAIN as SENSOR_DOMAIN,
@@ -20,10 +21,23 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from . import Sun
+from . import (
+    STATE_ABOVE_HORIZON,
+    STATE_ATTR_AZIMUTH,
+    STATE_ATTR_ELEVATION,
+    STATE_ATTR_NEXT_DAWN,
+    STATE_ATTR_NEXT_DUSK,
+    STATE_ATTR_NEXT_MIDNIGHT,
+    STATE_ATTR_NEXT_NOON,
+    STATE_ATTR_NEXT_RISING,
+    STATE_ATTR_NEXT_SETTING,
+    STATE_ATTR_RISING,
+    STATE_BELOW_HORIZON,
+    Sun,
+)
 from .const import DOMAIN
 
-ENTITY_ID_SENSOR_FORMAT = SENSOR_DOMAIN + ".sun_{}"
+ENTITY_ID_SENSOR_FORMAT = SENSOR_DOMAIN + ".sun{}"
 
 
 @dataclass
@@ -39,6 +53,15 @@ class SunSensorEntityDescription(SensorEntityDescription, SunEntityDescriptionMi
 
 
 SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
+    SunSensorEntityDescription(
+        key="sun",
+        name=None,
+        translation_key="sun",
+        icon="mdi:theme-light-dark",
+        value_fn=lambda data: STATE_ABOVE_HORIZON
+        if data.solar_elevation > -0.833
+        else STATE_BELOW_HORIZON,
+    ),
     SunSensorEntityDescription(
         key="next_dawn",
         device_class=SensorDeviceClass.TIMESTAMP,
@@ -126,7 +149,7 @@ class SunSensor(SensorEntity):
     ) -> None:
         """Initiate Sun Sensor."""
         self.entity_description = entity_description
-        self.entity_id = ENTITY_ID_SENSOR_FORMAT.format(entity_description.key)
+        self.entity_id = ENTITY_ID_SENSOR_FORMAT.format(f"_{entity_description.key}")
         self._attr_unique_id = f"{entry_id}-{entity_description.key}"
         self.sun = sun
 
@@ -141,3 +164,30 @@ class SunSensor(SensorEntity):
         """Return value of sensor."""
         state = self.entity_description.value_fn(self.sun)
         return state
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon of the sensor sun."""
+        if self.entity_description.key == "sun":
+            # 0.8333 is the same value as astral uses
+            if self.sun.solar_elevation > -0.833:
+                return "mdi:white-balance-sunny"
+            return "mdi:weather-night"
+        return self.entity_description.icon
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes of the sensor sun."""
+        if self.entity_description.key == "sun":
+            return {
+                STATE_ATTR_NEXT_DAWN: self.sun.next_dawn.isoformat(),
+                STATE_ATTR_NEXT_DUSK: self.sun.next_dusk.isoformat(),
+                STATE_ATTR_NEXT_MIDNIGHT: self.sun.next_midnight.isoformat(),
+                STATE_ATTR_NEXT_NOON: self.sun.next_noon.isoformat(),
+                STATE_ATTR_NEXT_RISING: self.sun.next_rising.isoformat(),
+                STATE_ATTR_NEXT_SETTING: self.sun.next_setting.isoformat(),
+                STATE_ATTR_ELEVATION: self.sun.solar_elevation,
+                STATE_ATTR_AZIMUTH: self.sun.solar_azimuth,
+                STATE_ATTR_RISING: self.sun.rising,
+            }
+        return {}

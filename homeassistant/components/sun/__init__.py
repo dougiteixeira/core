@@ -120,6 +120,7 @@ class Sun(Entity):
     """Representation of the Sun."""
 
     _attr_name = "Sun"
+    _attr_entity_registry_enabled_default = False
     entity_id = ENTITY_ID
     # This entity is legacy and does not have a platform.
     # We can't fix this easily without breaking changes.

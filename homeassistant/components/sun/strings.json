@@ -14,13 +14,52 @@
     "_": {
       "name": "[%key:component::sun::title%]",
       "state": {
-        "above_horizon": "Above horizon",
-        "below_horizon": "Below horizon"
+        "above_horizon": "[%key:component::sun::entity::sensor::sun::state::above_horizon%]",
+        "below_horizon": "[%key:component::sun::entity::sensor::sun::state::below_horizon%]"
       }
     }
   },
   "entity": {
     "sensor": {
+      "sun": {
+        "state": {
+          "above_horizon": "Above horizon",
+          "below_horizon": "Below horizon"
+        },
+        "state_attributes": {
+          "next_dawn": {
+            "name": "[%key:component::sun::entity::sensor::next_dawn::name%]"
+          },
+          "next_dusk": {
+            "name": "[%key:component::sun::entity::sensor::next_dusk::name%]"
+          },
+          "next_midnight": {
+            "name": "[%key:component::sun::entity::sensor::next_midnight::name%]"
+          },
+          "next_noon": {
+            "name": "[%key:component::sun::entity::sensor::next_noon::name%]"
+          },
+          "next_rising": {
+            "name": "[%key:component::sun::entity::sensor::next_rising::name%]"
+          },
+          "next_setting": {
+            "name": "[%key:component::sun::entity::sensor::next_setting::name%]"
+          },
+          "azimuth": {
+            "name": "[%key:component::sun::entity::sensor::solar_azimuth::name%]"
+          },
+          "elevation": {
+            "name": "[%key:component::sun::entity::sensor::solar_elevation::name%]"
+          },
+          "rising": {
+            "name": "Rising",
+            "state": {
+              "true": "True",
+              "false": "False"
+            }
+          }
+        }
+      },
       "next_dawn": { "name": "Next dawn" },
       "next_dusk": { "name": "Next dusk" },
       "next_midnight": { "name": "Next midnight" },
