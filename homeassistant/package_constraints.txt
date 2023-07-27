@@ -20,10 +20,10 @@ dbus-fast==1.87.2
 fnv-hash-fast==0.4.0
 ha-av==10.1.0
 hass-nabucasa==0.69.0
-hassil==1.2.0
+hassil==1.2.2
 home-assistant-bluetooth==1.10.2
 home-assistant-frontend==20230725.0
-home-assistant-intents==2023.7.24
+home-assistant-intents==2023.7.25
 httpx==0.24.1
 ifaddr==0.2.0
 janus==1.0.0
@@ -120,10 +120,6 @@ python-socketio>=4.6.0,<5.0
 # Constrain multidict to avoid typing issues
 # https://github.com/home-assistant/core/pull/67046
 multidict>=6.0.2
-
-# Required for compatibility with point integration - ensure_active_token
-# https://github.com/home-assistant/core/pull/68176
-authlib<1.0
 
 # Version 2.0 added typing, prevent accidental fallbacks
 backoff>=2.0
