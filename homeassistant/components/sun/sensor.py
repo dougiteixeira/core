@@ -22,6 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from . import (
+    ELEVATION_ABOVE,
     STATE_ABOVE_HORIZON,
     STATE_ATTR_AZIMUTH,
     STATE_ATTR_ELEVATION,
@@ -59,7 +60,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="sun",
         icon="mdi:theme-light-dark",
         value_fn=lambda data: STATE_ABOVE_HORIZON
-        if data.solar_elevation > -0.833
+        if data.solar_elevation > ELEVATION_ABOVE
         else STATE_BELOW_HORIZON,
     ),
     SunSensorEntityDescription(
@@ -68,6 +69,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_dawn",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_dawn,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="next_dusk",
@@ -75,6 +77,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_dusk",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_dusk,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="next_midnight",
@@ -82,6 +85,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_midnight",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_midnight,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="next_noon",
@@ -89,6 +93,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_noon",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_noon,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="next_rising",
@@ -96,6 +101,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_rising",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_rising,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="next_setting",
@@ -103,6 +109,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         translation_key="next_setting",
         icon="mdi:sun-clock",
         value_fn=lambda data: data.next_setting,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="solar_elevation",
@@ -112,6 +119,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         value_fn=lambda data: data.solar_elevation,
         entity_registry_enabled_default=False,
         native_unit_of_measurement=DEGREE,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SunSensorEntityDescription(
         key="solar_azimuth",
@@ -121,6 +129,7 @@ SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
         value_fn=lambda data: data.solar_azimuth,
         entity_registry_enabled_default=False,
         native_unit_of_measurement=DEGREE,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -141,7 +150,6 @@ class SunSensor(SensorEntity):
     """Representation of a Sun Sensor."""
 
     _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
     entity_description: SunSensorEntityDescription
 
     def __init__(
@@ -149,7 +157,6 @@ class SunSensor(SensorEntity):
     ) -> None:
         """Initiate Sun Sensor."""
         self.entity_description = entity_description
-        self.entity_id = ENTITY_ID_SENSOR_FORMAT.format(f"_{entity_description.key}")
         self._attr_unique_id = f"{entry_id}-{entity_description.key}"
         self.sun = sun
 
@@ -170,7 +177,7 @@ class SunSensor(SensorEntity):
         """Return the icon of the sensor sun."""
         if self.entity_description.key == "sun":
             # 0.8333 is the same value as astral uses
-            if self.sun.solar_elevation > -0.833:
+            if self.sun.solar_elevation > ELEVATION_ABOVE:
                 return "mdi:white-balance-sunny"
             return "mdi:weather-night"
         return self.entity_description.icon

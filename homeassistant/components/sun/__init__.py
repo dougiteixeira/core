@@ -15,8 +15,8 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, event
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers import config_validation as cv, device_registry as dr, event
+from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.integration_platform import (
     async_process_integration_platform_for_component,
 )
@@ -32,6 +32,8 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 ENTITY_ID = "sun.sun"
+
+ELEVATION_ABOVE = -0.833
 
 STATE_ABOVE_HORIZON = "above_horizon"
 STATE_BELOW_HORIZON = "below_horizon"
@@ -100,7 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Process integration platforms right away since
     # we will create entities before firing EVENT_COMPONENT_LOADED
     await async_process_integration_platform_for_component(hass, DOMAIN)
-    hass.data[DOMAIN] = Sun(hass)
+    hass.data[DOMAIN] = Sun(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
     return True
 
@@ -139,10 +141,18 @@ class Sun(Entity):
     rising: bool
     _next_change: datetime
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the sun."""
         self.hass = hass
+        self.entry = entry
         self.phase: str | None = None
+
+        self._attr_unique_id = f"{self.entry.entry_id}-{ENTITY_ID}"
+        self._attr_device_info = DeviceInfo(
+            name="Sun",
+            identifiers={(DOMAIN, self.entry.entry_id)},
+            entry_type=dr.DeviceEntryType.SERVICE,
+        )
 
         self._config_listener: CALLBACK_TYPE | None = None
         self._update_events_listener: CALLBACK_TYPE | None = None
@@ -178,7 +188,7 @@ class Sun(Entity):
     def state(self) -> str:
         """Return the state of the sun."""
         # 0.8333 is the same value as astral uses
-        if self.solar_elevation > -0.833:
+        if self.solar_elevation > ELEVATION_ABOVE:
             return STATE_ABOVE_HORIZON
 
         return STATE_BELOW_HORIZON
