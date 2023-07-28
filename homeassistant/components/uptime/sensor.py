@@ -34,7 +34,7 @@ class UptimeSensor(SensorEntity):
         self._attr_native_value = dt_util.utcnow()
         self._attr_unique_id = entry.entry_id
         self._attr_device_info = DeviceInfo(
-            name=entry.title,
+            name="Uptime",
             identifiers={(DOMAIN, entry.entry_id)},
             entry_type=DeviceEntryType.SERVICE,
         )

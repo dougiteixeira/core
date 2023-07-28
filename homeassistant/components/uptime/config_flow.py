@@ -14,7 +14,7 @@ from .const import DOMAIN
 class UptimeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Uptime."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -25,7 +25,7 @@ class UptimeConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             return self.async_create_entry(
-                title="Uptime",
+                title="",
                 data={},
             )
 
