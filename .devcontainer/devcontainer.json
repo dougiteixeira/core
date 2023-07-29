@@ -7,6 +7,9 @@
   "containerEnv": { "DEVCONTAINER": "1" },
   "appPort": ["8123:8123"],
   "runArgs": ["-e", "GIT_EDITOR=code --wait"],
+  "mounts": [
+    "source=D:/Users/Douglas/Documents/GitHub/frontend,target=/workspaces/frontend,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

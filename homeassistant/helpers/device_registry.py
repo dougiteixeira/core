@@ -15,6 +15,9 @@ from yarl import URL
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.loader import (
+    async_get_integration,
+)
 from homeassistant.util.json import format_unserializable_data
 import homeassistant.util.uuid as uuid_util
 
@@ -536,7 +539,16 @@ class DeviceRegistry:
                 and (not name or name is UNDEFINED)
                 and config_entry
             ):
-                name = config_entry.title
+                if config_entry.title == "":
+                    integration_name_manifest = _get_integration_descriptions(
+                        self.hass, config_entry.domain
+                    )
+                    _LOGGER.warning(
+                        "Test name device: Desc: %s", integration_name_manifest
+                    )
+                    name = "Teste"
+                else:
+                    name = config_entry.title
 
         if default_manufacturer is not UNDEFINED and device.manufacturer is None:
             manufacturer = default_manufacturer
@@ -1073,3 +1085,11 @@ def _normalize_connections(connections: set[tuple[str, str]]) -> set[tuple[str, 
         (key, format_mac(value)) if key == CONNECTION_NETWORK_MAC else (key, value)
         for key, value in connections
     }
+
+
+async def _get_integration_descriptions(
+    hass: HomeAssistant, domain: str
+) -> dict[str, Any]:
+    """Get metadata for especific brands and integrations."""
+    await async_get_integration(hass, domain)
+    return {"test": "Test"}

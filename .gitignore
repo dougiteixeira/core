@@ -134,3 +134,5 @@ tmp_cache
 
 # python-language-server / Rope
 .ropeproject
+.devcontainer/devcontainer.json
+.gitignore
