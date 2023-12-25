@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
@@ -106,8 +107,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     def play_sound(service: ServiceCall) -> None:
         """Play sound on the device."""
-        account = service.data[ATTR_ACCOUNT]
-        device_name: str = service.data[ATTR_DEVICE_NAME]
+        account = get_account_email(hass, service.data[ATTR_ACCOUNT])
+        device_name: str = get_device_name(hass, service.data[ATTR_DEVICE_NAME])
         device_name = slugify(device_name.replace(" ", "", 99))
 
         for device in _get_account(account).get_devices_with_name(device_name):
@@ -115,8 +116,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     def display_message(service: ServiceCall) -> None:
         """Display a message on the device."""
-        account = service.data[ATTR_ACCOUNT]
-        device_name: str = service.data[ATTR_DEVICE_NAME]
+        account = get_account_email(hass, service.data[ATTR_ACCOUNT])
+        device_name: str = get_device_name(hass, service.data[ATTR_DEVICE_NAME])
         device_name = slugify(device_name.replace(" ", "", 99))
         message = service.data.get(ATTR_LOST_DEVICE_MESSAGE)
         sound = service.data.get(ATTR_LOST_DEVICE_SOUND, False)
@@ -126,8 +127,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     def lost_device(service: ServiceCall) -> None:
         """Make the device in lost state."""
-        account = service.data[ATTR_ACCOUNT]
-        device_name: str = service.data[ATTR_DEVICE_NAME]
+        account = get_account_email(hass, service.data[ATTR_ACCOUNT])
+        device_name: str = get_device_name(hass, service.data[ATTR_DEVICE_NAME])
         device_name = slugify(device_name.replace(" ", "", 99))
         number = service.data.get(ATTR_LOST_DEVICE_NUMBER)
         message = service.data.get(ATTR_LOST_DEVICE_MESSAGE)
@@ -137,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     def update_account(service: ServiceCall) -> None:
         """Call the update function of an iCloud account."""
-        if (account := service.data.get(ATTR_ACCOUNT)) is None:
+        if (account := get_account_email(hass, service.data[ATTR_ACCOUNT])) is None:
             for account in hass.data[DOMAIN].values():
                 account.keep_alive()
         else:
@@ -190,3 +191,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.data[CONF_USERNAME])
     return unload_ok
+
+
+def get_account_email(hass: HomeAssistant, config_entry_id: str):
+    """Get the account email from the id in the integration config entry."""
+    config_entry = hass.config_entries.async_get_entry(config_entry_id)
+    if config_entry is None:
+        return config_entry_id
+    return config_entry.data[CONF_USERNAME]
+
+
+def get_device_name(hass: HomeAssistant, device_id: str):
+    """Get the original device name from the device id."""
+    dev_reg = dr.async_get(hass)
+    device = dev_reg.async_get(device_id)
+    if device is None:
+        return device_id
+    return device.name

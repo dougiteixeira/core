@@ -50,7 +50,7 @@
       "fields": {
         "account": {
           "name": "Account",
-          "description": "Your iCloud account username (email) or account name."
+          "description": "Your iCloud account username (email) or account name or id of the integration config entry."
         }
       }
     },
@@ -64,7 +64,7 @@
         },
         "device_name": {
           "name": "Device name",
-          "description": "The name of the Apple device to play a sound."
+          "description": "The name of the Apple device or Home Assistant device registry id to play a sound."
         }
       }
     },
@@ -78,7 +78,7 @@
         },
         "device_name": {
           "name": "Device name",
-          "description": "The name of the Apple device to display the message."
+          "description": "The name of the Apple device or Home Assistant device registry id to display the message."
         },
         "message": {
           "name": "Message",
@@ -100,7 +100,7 @@
         },
         "device_name": {
           "name": "Device name",
-          "description": "The name of the Apple device to set lost."
+          "description": "The name of the Apple device or Home Assistant device registry id to set lost."
         },
         "number": {
           "name": "Number",

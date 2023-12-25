@@ -4,7 +4,8 @@ update:
       required: true
       example: "steve@apple.com"
       selector:
-        text:
+        config_entry:
+          integration: "icloud"
 
 play_sound:
   fields:
@@ -12,12 +13,15 @@ play_sound:
       required: true
       example: "steve@apple.com"
       selector:
-        text:
+        config_entry:
+          integration: "icloud"
     device_name:
       required: true
       example: "stevesiphone"
       selector:
-        text:
+        device:
+          filter:
+            integration: "icloud"
 
 display_message:
   fields:
@@ -25,12 +29,15 @@ display_message:
       required: true
       example: "steve@apple.com"
       selector:
-        text:
+        config_entry:
+          integration: "icloud"
     device_name:
       required: true
       example: "stevesiphone"
       selector:
-        text:
+        device:
+          filter:
+            integration: "icloud"
     message:
       required: true
       example: "Hey Steve !"
@@ -46,12 +53,15 @@ lost_device:
       required: true
       example: "steve@apple.com"
       selector:
-        text:
+        config_entry:
+          integration: "icloud"
     device_name:
       required: true
       example: "stevesiphone"
       selector:
-        text:
+        device:
+          filter:
+            integration: "icloud"
     number:
       required: true
       example: "+33450020100"
