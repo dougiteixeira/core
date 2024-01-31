@@ -132,6 +132,34 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
             entity_category=EntityCategory.CONFIG,
         ),
     ),
+    # Smart Lock
+    # https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+    "ms": (
+        NumberEntityDescription(
+            key=DPCode.AUTO_LOCK_TIME,
+            icon="mdi:timer-cog-outline",
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            translation_key="lock_time_auto",
+        ),
+        NumberEntityDescription(
+            key=DPCode.STAY_HOLD_TIME,
+            icon="mdi:timer-cog-outline",
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            translation_key="lock_stay_hold_time",
+        ),
+        NumberEntityDescription(
+            key=DPCode.OPEN_RATE,
+            icon="mdi:percent",
+            native_unit_of_measurement=PERCENTAGE,
+            translation_key="lock_open_rate",
+        ),
+        NumberEntityDescription(
+            key=DPCode.ALARM_TIME,
+            icon="mdi:timer-cog-outline",
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            translation_key="lock_alarm_time",
+        ),
+    ),
     # Sous Vide Cooker
     # https://developer.tuya.com/en/docs/iot/categorymzj?id=Kaiuz2vy130ux
     "mzj": (
@@ -310,6 +338,18 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         ),
     ),
 }
+
+# Lock (duplicate of 'ms')
+# https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+NUMBERS["bxx"] = NUMBERS["ms"]
+NUMBERS["gyms"] = NUMBERS["ms"]
+NUMBERS["jtmspro"] = NUMBERS["ms"]
+NUMBERS["hotelms"] = NUMBERS["ms"]
+NUMBERS["ms_category"] = NUMBERS["ms"]
+NUMBERS["jtmsbh"] = NUMBERS["ms"]
+NUMBERS["mk"] = NUMBERS["ms"]
+NUMBERS["videolock"] = NUMBERS["ms"]
+NUMBERS["photolock"] = NUMBERS["ms"]
 
 
 async def async_setup_entry(

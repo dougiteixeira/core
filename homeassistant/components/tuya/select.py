@@ -14,6 +14,18 @@ from . import HomeAssistantTuyaData
 from .base import TuyaEntity
 from .const import DOMAIN, TUYA_DISCOVERY_NEW, DPCode, DPType
 
+# Commonly used, that are re-used in the select down below.
+LANGUAGE_SELECT: tuple[SelectEntityDescription, ...] = (
+    SelectEntityDescription(
+        key=DPCode.LANGUAGE,
+        entity_category=EntityCategory.CONFIG,
+        icon="mdi:translate",
+        entity_registry_enabled_default=False,
+        translation_key="language",
+    ),
+)
+
+
 # All descriptions can be found here. Mostly the Enum data types in the
 # default instructions set of each category end up being a select.
 # https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
@@ -65,6 +77,119 @@ SELECTS: dict[str, tuple[SelectEntityDescription, ...]] = {
             entity_category=EntityCategory.CONFIG,
             translation_key="light_mode",
         ),
+    ),
+    # Smart Lock
+    # https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+    "ms": (
+        SelectEntityDescription(
+            key=DPCode.ALARM_VOLUME,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:volume-high",
+            translation_key="lock_alarm_volume",
+        ),
+        SelectEntityDescription(
+            key=DPCode.BASIC_NIGHTVISION,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:weather-night",
+            translation_key="lock_basic_nightvision",
+        ),
+        SelectEntityDescription(
+            key=DPCode.BEEP_VOLUME,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:volume-high",
+            translation_key="lock_voice_volume",
+        ),
+        SelectEntityDescription(
+            key=DPCode.DOOR_UNCLOSED_TRIGGER,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:timer-cog-outline",
+            translation_key="lock_door_unclosed_trigger",
+        ),
+        SelectEntityDescription(
+            key=DPCode.DOORBELL_SONG,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:music-box-multiple-outline",
+            translation_key="lock_doorbell_song",
+        ),
+        SelectEntityDescription(
+            key=DPCode.DOORBELL_VOLUME,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:volume-high",
+            translation_key="lock_doorbell_volume",
+        ),
+        SelectEntityDescription(
+            key=DPCode.KEY_TONE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:music-box-multiple-outline",
+            translation_key="lock_keypress_volume",
+        ),
+        SelectEntityDescription(
+            key=DPCode.LOCK_MOTOR_DIRECTION,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:swap-horizontal",
+            translation_key="lock_motor_direction",
+        ),
+        SelectEntityDescription(
+            key=DPCode.LOW_POWER_THRESHOLD,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:battery-alert-variant-outline",
+            translation_key="lock_low_power_threshold",
+        ),
+        SelectEntityDescription(
+            key=DPCode.MOTOR_TORQUE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:hexagon-multiple-outline",
+            translation_key="lock_motor_torque",
+        ),
+        SelectEntityDescription(
+            key=DPCode.OPEN_SPEED_STATE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:speedometer",
+            translation_key="lock_open_speed_state",
+        ),
+        SelectEntityDescription(
+            key=DPCode.PHOTO_MODE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:image-multiple-outline",
+            translation_key="lock_photo_mode",
+        ),
+        SelectEntityDescription(
+            key=DPCode.RINGTONE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:music-box-multiple-outline",
+            translation_key="lock_ringtone",
+        ),
+        SelectEntityDescription(
+            key=DPCode.SOUND_MODE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:music-box-multiple-outline",
+            translation_key="lock_sound_mode",
+        ),
+        SelectEntityDescription(
+            key=DPCode.STAY_ALARM_MODE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:star-box-multiple-outline",
+            translation_key="lock_stay_alarm_mode",
+        ),
+        SelectEntityDescription(
+            key=DPCode.STAY_CAPTURE_MODE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:image-multiple-outline",
+            translation_key="lock_stay_capture_mode",
+        ),
+        SelectEntityDescription(
+            key=DPCode.STAY_TRIGGER_DISTANCE,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:signal-distance-variant",
+            translation_key="lock_stay_trigger_distance",
+        ),
+        SelectEntityDescription(
+            key=DPCode.UNLOCK_SWITCH,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:shield-lock-open-outline",
+            translation_key="lock_unlock_switch",
+        ),
+        *LANGUAGE_SELECT,
     ),
     # Heater
     # https://developer.tuya.com/en/docs/iot/categoryqn?id=Kaiuz18kih0sm
@@ -343,6 +468,18 @@ SELECTS["cz"] = SELECTS["kg"]
 # Power Socket (duplicate of `kg`)
 # https://developer.tuya.com/en/docs/iot/s?id=K9gf7o5prgf7s
 SELECTS["pc"] = SELECTS["kg"]
+
+# Lock (duplicate of 'ms')
+# https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+SELECTS["bxx"] = SELECTS["ms"]
+SELECTS["gyms"] = SELECTS["ms"]
+SELECTS["jtmspro"] = SELECTS["ms"]
+SELECTS["hotelms"] = SELECTS["ms"]
+SELECTS["ms_category"] = SELECTS["ms"]
+SELECTS["jtmsbh"] = SELECTS["ms"]
+SELECTS["mk"] = SELECTS["ms"]
+SELECTS["videolock"] = SELECTS["ms"]
+SELECTS["photolock"] = SELECTS["ms"]
 
 
 async def async_setup_entry(

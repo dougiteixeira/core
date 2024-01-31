@@ -304,6 +304,107 @@ SWITCHES: dict[str, tuple[SwitchEntityDescription, ...]] = {
             entity_category=EntityCategory.CONFIG,
         ),
     ),
+    # Smart Lock
+    # https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+    "ms": (
+        SwitchEntityDescription(
+            key=DPCode.AUTOMATIC_LOCK,
+            icon="mdi:lock-clock",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_auto",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.ARMING_SWITCH,
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_arming",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.DO_NOT_DISTURB,
+            icon="mdi:minus-circle-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="do_not_disturb",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.DORMANT_SWITCH,
+            icon="mdi:sleep",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_hibernation",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.FREE_VERIFY,
+            icon="mdi:shield-lock-open-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_verification_free",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.SWITCH_ANTILOCK_LIMIT,
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_double_locking_limit",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.ALARM_SWITCH,
+            icon="mdi:close-network-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="disconnection_alert",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.LOCK_FUNCTION_SWITCH,
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_function",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.ENFORCE_LOCK_UP,
+            icon="mdi:lock-check",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_mandatory_double",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.CALLPHONE,
+            icon="mdi:phone-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_phone_call",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.NORMAL_OPEN_SWITCH,
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_normally_open",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.SPECIAL_CONTROL,
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_special_control",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.BASIC_OSD,
+            icon="mdi:watermark",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="time_watermark",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.BASIC_PRIVATE,
+            icon="mdi:camera-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="privacy_mode",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.WIRELESS_AWAKE,
+            icon="mdi:list-status",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_wakeup",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.REMOTE_RESULT,
+            icon="mdi:lock-alert-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_password_free_feedback",
+        ),
+        SwitchEntityDescription(
+            key=DPCode.UNLOCK_SPECIAL,
+            icon="mdi:account-key-outline",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="lock_unlock_secret_key",
+        ),
+    ),
     # Sous Vide Cooker
     # https://developer.tuya.com/en/docs/iot/categorymzj?id=Kaiuz2vy130ux
     "mzj": (
@@ -717,6 +818,18 @@ SWITCHES: dict[str, tuple[SwitchEntityDescription, ...]] = {
 # Socket (duplicate of `pc`)
 # https://developer.tuya.com/en/docs/iot/s?id=K9gf7o5prgf7s
 SWITCHES["cz"] = SWITCHES["pc"]
+
+# Lock (duplicate of 'ms')
+# https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+SWITCHES["bxx"] = SWITCHES["ms"]
+SWITCHES["gyms"] = SWITCHES["ms"]
+SWITCHES["jtmspro"] = SWITCHES["ms"]
+SWITCHES["hotelms"] = SWITCHES["ms"]
+SWITCHES["ms_category"] = SWITCHES["ms"]
+SWITCHES["jtmsbh"] = SWITCHES["ms"]
+SWITCHES["mk"] = SWITCHES["ms"]
+SWITCHES["videolock"] = SWITCHES["ms"]
+SWITCHES["photolock"] = SWITCHES["ms"]
 
 
 async def async_setup_entry(

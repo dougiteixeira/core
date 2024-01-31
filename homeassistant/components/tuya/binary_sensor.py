@@ -206,6 +206,51 @@ BINARY_SENSORS: dict[str, tuple[TuyaBinarySensorEntityDescription, ...]] = {
             on_value={"AQAB"},
         ),
     ),
+    # Smart Lock
+    # https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+    "ms": (
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.OPEN_INSIDE,
+            icon="mdi:home-export-outline",
+            translation_key="lock_open_inside",
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.OPEN_CLOSE,
+            icon="mdi:lock-pattern",
+            translation_key="lock_open_close",
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.DOOR_OPENED, device_class=BinarySensorDeviceClass.DOOR
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.REVERSE_LOCK, translation_key="lock_reverse"
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.CHILD_LOCK,
+            icon="mdi:account-lock",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="child_lock",
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.DOORBELL,
+            device_class=BinarySensorDeviceClass.SOUND,
+            translation_key="lock_doorbell",
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.ANTI_LOCK_OUTSIDE, translation_key="lock_anti_outside"
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.LOCK_MOTOR_STATE,
+            device_class=BinarySensorDeviceClass.LOCK,
+            translation_key="lock_status",
+        ),
+        TuyaBinarySensorEntityDescription(
+            key=DPCode.HIJACK,
+            icon="mdi:lock-alert-outline",
+            device_class=BinarySensorDeviceClass.SAFETY,
+            translation_key="lock_duress_alert",
+        ),
+    ),
     # Luminance Sensor
     # https://developer.tuya.com/en/docs/iot/categoryldcg?id=Kaiuz3n7u69l8
     "ldcg": (
@@ -341,6 +386,18 @@ BINARY_SENSORS: dict[str, tuple[TuyaBinarySensorEntityDescription, ...]] = {
         ),
     ),
 }
+
+# Lock (duplicate of 'ms')
+# https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+BINARY_SENSORS["bxx"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["gyms"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["jtmspro"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["hotelms"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["ms_category"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["jtmsbh"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["mk"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["videolock"] = BINARY_SENSORS["ms"]
+BINARY_SENSORS["photolock"] = BINARY_SENSORS["ms"]
 
 
 async def async_setup_entry(

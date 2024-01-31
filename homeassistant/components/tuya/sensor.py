@@ -75,6 +75,13 @@ BATTERY_SENSORS: tuple[TuyaSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     ),
+    TuyaSensorEntityDescription(
+        key=DPCode.RESIDUAL_ELECTRICITY,
+        device_class=SensorDeviceClass.BATTERY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        translation_key="battery",
+    ),
 )
 
 # All descriptions can be found here. Mostly the Integer data types in the
@@ -421,6 +428,151 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
     # Door Window Sensor
     # https://developer.tuya.com/en/docs/iot/s?id=K9gf48hm02l8m
     "mcs": BATTERY_SENSORS,
+    # Smart Lock
+    # https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+    "ms": (
+        TuyaSensorEntityDescription(
+            key=DPCode.ALARM_LOCK,
+            icon="mdi:information-outline",
+            translation_key="lock_alarm",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.CLOSED_OPENED,
+            icon="mdi:lock",
+            translation_key="lock_status",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.ANTILOCK_STATUS,
+            icon="mdi:lock-check",
+            translation_key="lock_antilock",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.INSURANCE_STATUS,
+            icon="mdi:lock-check",
+            translation_key="lock_insurance",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_FINGERPRINT,
+            icon="mdi:fingerprint",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_fingerprint",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_PASSWORD,
+            icon="mdi:form-textbox-password",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_password",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_TEMPORARY,
+            icon="mdi:form-textbox-password",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_temporary_password",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_DYNAMIC,
+            icon="mdi:form-textbox-password",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_dynamic_password",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_CARD,
+            icon="mdi:card-bulleted-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_card",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_IDENITY_CARD,
+            icon="mdi:card-account-details-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_identity_card",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_FACE,
+            icon="mdi:face-recognition",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_face_recognition",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_KEY,
+            icon="mdi:key-chain-variant",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_mechanical_key",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_EYE,
+            icon="mdi:eye-check-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_iris",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_HAND,
+            icon="mdi:hand-back-left-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_palm_print",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_FINGER_VEIN,
+            icon="mdi:hand-pointing-up",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_finger_vein",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_BLE,
+            icon="mdi:bluetooth",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_bluetooth",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_REMOTE,
+            icon="mdi:wan",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_remote",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_PHONE_REMOTE,
+            icon="mdi:cellphone-key",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_mobile_phone",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_VOICE_REMOTE,
+            icon="mdi:cellphone-key",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_voice",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_APP,
+            icon="mdi:open-in-app",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_app",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_ACCESS_CONTROL,
+            icon="mdi:account-circle-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_access_control_system",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_EMERGENCY,
+            icon="mdi:car-brake-alert",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_emergency_password",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_ADMIN,
+            icon="mdi:account-check-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_administrator",
+        ),
+        TuyaSensorEntityDescription(
+            key=DPCode.UNLOCK_SUBADMIN,
+            icon="mdi:account-check-outline",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="lock_last_housekeeper",
+        ),
+        *BATTERY_SENSORS,
+    ),
     # Sous Vide Cooker
     # https://developer.tuya.com/en/docs/iot/categorymzj?id=Kaiuz2vy130ux
     "mzj": (
@@ -1099,6 +1251,18 @@ SENSORS["cz"] = SENSORS["kg"]
 # Power Socket (duplicate of `kg`)
 # https://developer.tuya.com/en/docs/iot/s?id=K9gf7o5prgf7s
 SENSORS["pc"] = SENSORS["kg"]
+
+# Lock (duplicate of 'ms')
+# https://developer.tuya.com/en/docs/iot/f?id=Kb0o2vbzuzl81
+SENSORS["bxx"] = SENSORS["ms"]
+SENSORS["gyms"] = SENSORS["ms"]
+SENSORS["jtmspro"] = SENSORS["ms"]
+SENSORS["hotelms"] = SENSORS["ms"]
+SENSORS["ms_category"] = SENSORS["ms"]
+SENSORS["jtmsbh"] = SENSORS["ms"]
+SENSORS["mk"] = SENSORS["ms"]
+SENSORS["videolock"] = SENSORS["ms"]
+SENSORS["photolock"] = SENSORS["ms"]
 
 
 async def async_setup_entry(
