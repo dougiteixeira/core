@@ -1342,6 +1342,11 @@
       "config_flow": true,
       "iot_class": "local_push"
     },
+    "duquesne_light": {
+      "name": "Duquesne Light",
+      "integration_type": "virtual",
+      "supported_by": "opower"
+    },
     "dwd_weather_warnings": {
       "name": "Deutscher Wetterdienst (DWD) Weather Warnings",
       "integration_type": "service",
@@ -2321,7 +2326,7 @@
     "gpsd": {
       "name": "GPSD",
       "integration_type": "hub",
-      "config_flow": false,
+      "config_flow": true,
       "iot_class": "local_polling"
     },
     "gpslogger": {
@@ -5075,6 +5080,11 @@
       "config_flow": false,
       "iot_class": "local_polling"
     },
+    "samsam": {
+      "name": "SamSam",
+      "integration_type": "virtual",
+      "supported_by": "energyzero"
+    },
     "samsung": {
       "name": "Samsung",
       "integrations": {
@@ -6163,16 +6173,21 @@
       ]
     },
     "traccar": {
-      "name": "Traccar Client",
-      "integration_type": "hub",
-      "config_flow": true,
-      "iot_class": "local_polling"
-    },
-    "traccar_server": {
-      "name": "Traccar Server",
-      "integration_type": "hub",
-      "config_flow": true,
-      "iot_class": "local_polling"
+      "name": "Traccar",
+      "integrations": {
+        "traccar": {
+          "integration_type": "hub",
+          "config_flow": true,
+          "iot_class": "cloud_push",
+          "name": "Traccar Client"
+        },
+        "traccar_server": {
+          "integration_type": "hub",
+          "config_flow": true,
+          "iot_class": "local_polling",
+          "name": "Traccar Server"
+        }
+      }
     },
     "tractive": {
       "name": "Tractive",
@@ -6941,6 +6956,11 @@
       "integration_type": "hub",
       "config_flow": true,
       "iot_class": "calculated"
+    },
+    "zondergas": {
+      "name": "ZonderGas",
+      "integration_type": "virtual",
+      "supported_by": "energyzero"
     },
     "zoneminder": {
       "name": "ZoneMinder",
