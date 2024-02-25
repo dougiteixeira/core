@@ -27,6 +27,13 @@
       },
       "solar_rising": {
         "default": "mdi:sun-clock"
+      },
+      "sun": {
+        "default": "mdi:theme-light-dark",
+        "state": {
+          "above_horizon": "mdi:weather-sunny",
+          "below_horizon": "mdi:weather-night"
+        }
       }
     }
   }

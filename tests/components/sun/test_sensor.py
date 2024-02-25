@@ -7,8 +7,10 @@ from freezegun.api import FrozenDateTimeFactory
 import pytest
 
 from homeassistant.components import sun
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.entity_registry as er
 from homeassistant.setup import async_setup_component
 import homeassistant.util.dt as dt_util
@@ -178,3 +180,112 @@ async def test_setting_rising(
     assert entity
     assert entity.entity_category is EntityCategory.DIAGNOSTIC
     assert entity.unique_id == f"{entry_ids[0].entry_id}-solar_rising"
+
+
+async def test_sensor_sun(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    entity_registry_enabled_by_default: None,
+) -> None:
+    """Test retrieving sun entity."""
+    utc_now = datetime(2016, 11, 1, 0, 0, 0, tzinfo=dt_util.UTC)
+    freezer.move_to(utc_now)
+    await async_setup_component(hass, sun.DOMAIN, {sun.DOMAIN: {}})
+    await hass.async_block_till_done()
+
+    entry_ids = hass.config_entries.async_entries("sun")
+
+    entity_reg = er.async_get(hass)
+    entity = entity_reg.async_get("sensor.sun")
+
+    assert entity
+    assert entity.original_device_class is SensorDeviceClass.ENUM
+    assert entity.unique_id == f"{entry_ids[0].entry_id}-sun"
+    assert entity.translation_key == "sun"
+
+    assert entity.device_id
+    device_registry = dr.async_get(hass)
+    device_entry = device_registry.async_get(entity.device_id)
+    assert device_entry
+    assert device_entry.name == "Sun"
+    assert device_entry.entry_type is dr.DeviceEntryType.SERVICE
+
+    state = hass.states.get("sensor.sun")
+    assert state.state == sun.STATE_BELOW_HORIZON
+
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_DAWN)
+        == hass.states.get("sensor.sun_next_dawn").state
+    )
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_DUSK)
+        == hass.states.get("sensor.sun_next_dusk").state
+    )
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_MIDNIGHT)
+        == hass.states.get("sensor.sun_next_midnight").state
+    )
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_NOON)
+        == hass.states.get("sensor.sun_next_noon").state
+    )
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_RISING)
+        == hass.states.get("sensor.sun_next_rising").state
+    )
+    assert (
+        state.attributes.get(sun.STATE_ATTR_NEXT_SETTING)
+        == hass.states.get("sensor.sun_next_setting").state
+    )
+    assert state.attributes.get(sun.STATE_ATTR_SOLAR_AZIMUTH) == float(
+        hass.states.get("sensor.sun_solar_azimuth").state
+    )
+    assert state.attributes.get(sun.STATE_ATTR_SOLAR_ELEVATION) == float(
+        hass.states.get("sensor.sun_solar_elevation").state
+    )
+    assert state.attributes.get(sun.STATE_ATTR_RISING) == bool(
+        hass.states.get("sensor.sun_solar_rising").state
+    )
+
+    freezer.tick(timedelta(hours=36))
+    # Block once for Sun to update
+    await hass.async_block_till_done()
+    # Block another time for the sensors to update
+    await hass.async_block_till_done()
+
+    state_2 = hass.states.get("sensor.sun")
+    assert state_2.state == sun.STATE_ABOVE_HORIZON
+
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_DAWN)
+        == hass.states.get("sensor.sun_next_dawn").state
+    )
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_DUSK)
+        == hass.states.get("sensor.sun_next_dusk").state
+    )
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_MIDNIGHT)
+        == hass.states.get("sensor.sun_next_midnight").state
+    )
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_NOON)
+        == hass.states.get("sensor.sun_next_noon").state
+    )
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_RISING)
+        == hass.states.get("sensor.sun_next_rising").state
+    )
+    assert (
+        state_2.attributes.get(sun.STATE_ATTR_NEXT_SETTING)
+        == hass.states.get("sensor.sun_next_setting").state
+    )
+    assert state_2.attributes.get(sun.STATE_ATTR_SOLAR_AZIMUTH) == float(
+        hass.states.get("sensor.sun_solar_azimuth").state
+    )
+    assert state_2.attributes.get(sun.STATE_ATTR_SOLAR_ELEVATION) == float(
+        hass.states.get("sensor.sun_solar_elevation").state
+    )
+    assert state_2.attributes.get(sun.STATE_ATTR_RISING) == bool(
+        hass.states.get("sensor.sun_solar_rising").state
+    )

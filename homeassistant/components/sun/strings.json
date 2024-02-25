@@ -14,8 +14,8 @@
     "_": {
       "name": "[%key:component::sun::title%]",
       "state": {
-        "above_horizon": "Above horizon",
-        "below_horizon": "Below horizon"
+        "above_horizon": "[%key:component::sun::entity::sensor::sun::state::above_horizon%]",
+        "below_horizon": "[%key:component::sun::entity::sensor::sun::state::below_horizon%]"
       }
     }
   },
@@ -29,7 +29,68 @@
       "next_setting": { "name": "Next setting" },
       "solar_azimuth": { "name": "Solar azimuth" },
       "solar_elevation": { "name": "Solar elevation" },
-      "solar_rising": { "name": "Solar rising" }
+      "solar_rising": { "name": "Solar rising" },
+      "sun": {
+        "state": {
+          "above_horizon": "Above horizon",
+          "below_horizon": "Below horizon"
+        },
+        "state_attributes": {
+          "next_dawn": {
+            "name": "[%key:component::sun::entity::sensor::next_dawn::name%]"
+          },
+          "next_dusk": {
+            "name": "[%key:component::sun::entity::sensor::next_dusk::name%]"
+          },
+          "next_midnight": {
+            "name": "[%key:component::sun::entity::sensor::next_midnight::name%]"
+          },
+          "next_noon": {
+            "name": "[%key:component::sun::entity::sensor::next_noon::name%]"
+          },
+          "next_rising": {
+            "name": "[%key:component::sun::entity::sensor::next_rising::name%]"
+          },
+          "next_setting": {
+            "name": "[%key:component::sun::entity::sensor::next_setting::name%]"
+          },
+          "options": {
+            "state": {
+              "above_horizon": "[%key:component::sun::entity::sensor::sun::state::above_horizon%]",
+              "below_horizon": "[%key:component::sun::entity::sensor::sun::state::below_horizon%]"
+            }
+          },
+          "rising": {
+            "name": "Rising",
+            "state": {
+              "false": "[%key:common::state::no%]",
+              "true": "[%key:common::state::yes%]"
+            }
+          },
+          "solar_azimuth": {
+            "name": "[%key:component::sun::entity::sensor::solar_azimuth::name%]"
+          },
+          "solar_elevation": {
+            "name": "[%key:component::sun::entity::sensor::solar_elevation::name%]"
+          },
+          "solar_rising": {
+            "name": "[%key:component::sun::entity::sensor::solar_rising::name%]"
+          }
+        }
+      }
+    }
+  },
+  "issues": {
+    "deprecated_sun_entity_sun_sun": {
+      "title": "The sun.sun entity is deprecated",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "[%key:component::sun::issues::deprecated_sun_entity_sun_sun::title%]",
+            "description": "The `{entity}` entity is deprecated and will be removed in `2024.9`. However it is used within the following configurations:\n- {used_in}\n\nPlease adjust any automations or scripts that use this deprecated entity."
+          }
+        }
+      }
     }
   }
 }

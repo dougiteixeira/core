@@ -7,6 +7,8 @@ from typing import Any
 
 from astral.location import Elevation, Location
 
+from homeassistant.components.automation import automations_with_entity
+from homeassistant.components.script import scripts_with_entity
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     EVENT_CORE_CONFIG_UPDATE,
@@ -18,6 +20,7 @@ from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, event
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.helpers.sun import (
     get_astral_location,
     get_location_astral_event_next,
@@ -43,6 +46,8 @@ STATE_ATTR_NEXT_MIDNIGHT = "next_midnight"
 STATE_ATTR_NEXT_NOON = "next_noon"
 STATE_ATTR_NEXT_RISING = "next_rising"
 STATE_ATTR_NEXT_SETTING = "next_setting"
+STATE_ATTR_SOLAR_AZIMUTH = "solar_azimuth"
+STATE_ATTR_SOLAR_ELEVATION = "solar_elevation"
 
 # The algorithm used here is somewhat complicated. It aims to cut down
 # the number of sensor updates over the day. It's documented best in
@@ -97,6 +102,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from a config entry."""
     hass.data[DOMAIN] = Sun(hass)
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
+
+    # deprecate sun.sun entity - can be removed in 2024.9
+    used_in = automations_with_entity(hass, "sun.sun")
+    used_in += scripts_with_entity(hass, "sun.sun")
+    if used_in:
+        async_create_issue(
+            hass,
+            DOMAIN,
+            "deprecated_sun_entity_sun_sun",
+            breaks_in_ha_version="2024.9.0",
+            is_fixable=True,
+            is_persistent=True,
+            severity=IssueSeverity.WARNING,
+            translation_key="deprecated_sun_entity_sun_sun",
+            translation_placeholders={
+                "entity": "sun.sun",
+                "used_in": "\n- ".join([f"`{x}`" for x in used_in]),
+            },
+        )
+
     return True
 
 

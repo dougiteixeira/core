@@ -4,9 +4,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.sensor import (
-    DOMAIN as SENSOR_DOMAIN,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
@@ -14,16 +14,27 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import DEGREE, EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from . import Sun
+from . import (
+    STATE_ABOVE_HORIZON,
+    STATE_ATTR_NEXT_DAWN,
+    STATE_ATTR_NEXT_DUSK,
+    STATE_ATTR_NEXT_MIDNIGHT,
+    STATE_ATTR_NEXT_NOON,
+    STATE_ATTR_NEXT_RISING,
+    STATE_ATTR_NEXT_SETTING,
+    STATE_ATTR_RISING,
+    STATE_ATTR_SOLAR_AZIMUTH,
+    STATE_ATTR_SOLAR_ELEVATION,
+    STATE_BELOW_HORIZON,
+    Sun,
+)
 from .const import DOMAIN, SIGNAL_EVENTS_CHANGED, SIGNAL_POSITION_CHANGED
-
-ENTITY_ID_SENSOR_FORMAT = SENSOR_DOMAIN + ".sun_{}"
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -32,9 +43,30 @@ class SunSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[Sun], StateType | datetime]
     signal: str
+    attributes: tuple = ()
 
 
 SENSOR_TYPES: tuple[SunSensorEntityDescription, ...] = (
+    SunSensorEntityDescription(
+        key="sun",
+        translation_key="sun",
+        name=None,
+        value_fn=lambda data: data.state,
+        device_class=SensorDeviceClass.ENUM,
+        options=[STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON],
+        signal=SIGNAL_EVENTS_CHANGED,
+        attributes=(
+            STATE_ATTR_NEXT_DAWN,
+            STATE_ATTR_NEXT_DUSK,
+            STATE_ATTR_NEXT_MIDNIGHT,
+            STATE_ATTR_NEXT_NOON,
+            STATE_ATTR_NEXT_RISING,
+            STATE_ATTR_NEXT_SETTING,
+            STATE_ATTR_RISING,
+            STATE_ATTR_SOLAR_AZIMUTH,
+            STATE_ATTR_SOLAR_ELEVATION,
+        ),
+    ),
     SunSensorEntityDescription(
         key="next_dawn",
         device_class=SensorDeviceClass.TIMESTAMP,
@@ -124,13 +156,25 @@ class SunSensor(SensorEntity):
     _attr_should_poll = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     entity_description: SunSensorEntityDescription
+    _unrecorded_attributes = frozenset(
+        {
+            STATE_ATTR_NEXT_DAWN,
+            STATE_ATTR_NEXT_DUSK,
+            STATE_ATTR_NEXT_MIDNIGHT,
+            STATE_ATTR_NEXT_NOON,
+            STATE_ATTR_NEXT_RISING,
+            STATE_ATTR_NEXT_SETTING,
+            STATE_ATTR_RISING,
+            STATE_ATTR_SOLAR_AZIMUTH,
+            STATE_ATTR_SOLAR_ELEVATION,
+        }
+    )
 
     def __init__(
         self, sun: Sun, entity_description: SunSensorEntityDescription, entry_id: str
     ) -> None:
         """Initiate Sun Sensor."""
         self.entity_description = entity_description
-        self.entity_id = ENTITY_ID_SENSOR_FORMAT.format(entity_description.key)
         self._attr_unique_id = f"{entry_id}-{entity_description.key}"
         self.sun = sun
         self._attr_device_info = DeviceInfo(
@@ -138,6 +182,23 @@ class SunSensor(SensorEntity):
             identifiers={(DOMAIN, entry_id)},
             entry_type=DeviceEntryType.SERVICE,
         )
+        self._attr_extra_state_attributes = self._extract_attributes(self.sun)
+
+    @callback
+    def _extract_attributes(self, data: Sun) -> dict[str, Any]:
+        """Return state attributes with valid values."""
+        return {
+            attr: value
+            for attr in self.entity_description.attributes
+            if hasattr(data, attr)
+            and (value_attr := getattr(data, attr)) is not None
+            and (
+                value := value_attr.isoformat(timespec="seconds")
+                if isinstance(value_attr, datetime)
+                else value_attr
+            )
+            is not None
+        }
 
     @property
     def native_value(self) -> StateType | datetime:
