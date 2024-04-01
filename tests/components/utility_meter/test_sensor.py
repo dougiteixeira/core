@@ -1817,80 +1817,192 @@ async def test_unit_of_measurement_missing_invalid_new_state(
     )
 
 
-async def test_device_id(hass: HomeAssistant) -> None:
-    """Test for source entity device for Utility Meter."""
-    device_registry = dr.async_get(hass)
-    entity_registry = er.async_get(hass)
+@pytest.mark.parametrize(
+    ("yaml_config", "config_entry_configs"),
+    [
+        (
+            {
+                "utility_meter": {
+                    "test_invalid_meter": {
+                        "source": "sensor.test_invalid_source",
+                    },
+                    "test_no_device_class_meter": {
+                        "source": "sensor.test_no_device_class_source",
+                    },
+                    "test_device_class_invalid_meter": {
+                        "source": "sensor.test_device_class_invalid_source",
+                    },
+                    "gas_meter": {
+                        "source": "sensor.gas_source",
+                        "net_consumption": True,
+                    },
+                    "water_meter": {
+                        "source": "sensor.water_source",
+                        "net_consumption": True,
+                    },
+                    "current_meter": {
+                        "source": "sensor.current_source",
+                        "net_consumption": True,
+                    },
+                }
+            },
+            None,
+        ),
+        (
+            None,
+            [
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Test invalid meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.test_source",
+                    "tariffs": [],
+                },
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Test no device class meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.test_no_device_class_source",
+                    "tariffs": [],
+                },
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Test device class invalid meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.test_device_class_invalid_source",
+                    "tariffs": [],
+                },
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Gas meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.gas_source",
+                    "tariffs": [],
+                },
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Water meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.water_source",
+                    "tariffs": [],
+                },
+                {
+                    "cycle": "none",
+                    "delta_values": False,
+                    "name": "Current meter",
+                    "net_consumption": True,
+                    "offset": 0,
+                    "periodically_resetting": True,
+                    "source": "sensor.current_source",
+                    "tariffs": [],
+                },
+            ],
+        ),
+    ],
+)
+async def test_device_class_inherited(
+    hass: HomeAssistant, yaml_config, config_entry_configs
+) -> None:
+    """Test utility device_class inherited."""
 
-    source_config_entry = MockConfigEntry()
-    source_config_entry.add_to_hass(hass)
-    source_device_entry = device_registry.async_get_or_create(
-        config_entry_id=source_config_entry.entry_id,
-        identifiers={("sensor", "identifier_test")},
-        connections={("mac", "30:31:32:33:34:35")},
-    )
-    source_entity = entity_registry.async_get_or_create(
-        "sensor",
-        "test",
-        "source",
-        config_entry=source_config_entry,
-        device_id=source_device_entry.id,
-    )
-    await hass.async_block_till_done()
-    assert entity_registry.async_get("sensor.test_source") is not None
-
-    utility_meter_config_entry = MockConfigEntry(
-        data={},
-        domain=DOMAIN,
-        options={
-            "cycle": "monthly",
-            "delta_values": False,
-            "name": "Energy",
-            "net_consumption": False,
-            "offset": 0,
-            "periodically_resetting": True,
-            "source": "sensor.test_source",
-            "tariffs": ["peak", "offpeak"],
+    hass.states.async_set(
+        "sensor.test_device_class_invalid_source",
+        2,
+        {
+            ATTR_UNIT_OF_MEASUREMENT: UnitOfVolume.CUBIC_METERS,
+            ATTR_DEVICE_CLASS: "device_class_invalid",
         },
-        title="Energy",
     )
 
-    utility_meter_config_entry.add_to_hass(hass)
-
-    assert await hass.config_entries.async_setup(utility_meter_config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    utility_meter_entity = entity_registry.async_get("sensor.energy_peak")
-    assert utility_meter_entity is not None
-    assert utility_meter_entity.device_id == source_entity.device_id
-
-    utility_meter_entity = entity_registry.async_get("sensor.energy_offpeak")
-    assert utility_meter_entity is not None
-    assert utility_meter_entity.device_id == source_entity.device_id
-
-    utility_meter_no_tariffs_config_entry = MockConfigEntry(
-        data={},
-        domain=DOMAIN,
-        options={
-            "cycle": "monthly",
-            "delta_values": False,
-            "name": "Energy",
-            "net_consumption": False,
-            "offset": 0,
-            "periodically_resetting": True,
-            "source": "sensor.test_source",
-            "tariffs": [],
+    hass.states.async_set(
+        "sensor.test_no_device_class_source",
+        2,
+        {
+            ATTR_UNIT_OF_MEASUREMENT: UnitOfVolume.CUBIC_METERS,
         },
-        title="Energy",
     )
 
-    utility_meter_no_tariffs_config_entry.add_to_hass(hass)
-
-    assert await hass.config_entries.async_setup(
-        utility_meter_no_tariffs_config_entry.entry_id
+    hass.states.async_set(
+        "sensor.gas_source",
+        2,
+        {
+            ATTR_UNIT_OF_MEASUREMENT: UnitOfVolume.CUBIC_METERS,
+            ATTR_DEVICE_CLASS: SensorDeviceClass.GAS,
+        },
     )
+
+    hass.states.async_set(
+        "sensor.water_source",
+        2,
+        {
+            ATTR_UNIT_OF_MEASUREMENT: UnitOfVolume.CUBIC_METERS,
+            ATTR_DEVICE_CLASS: SensorDeviceClass.WATER,
+        },
+    )
+
+    hass.states.async_set(
+        "sensor.current_source",
+        2,
+        {
+            ATTR_UNIT_OF_MEASUREMENT: UnitOfElectricCurrent.AMPERE,
+            ATTR_DEVICE_CLASS: SensorDeviceClass.CURRENT,
+        },
+    )
+
+    if yaml_config:
+        assert await async_setup_component(hass, DOMAIN, yaml_config)
+        await hass.async_block_till_done()
+    else:
+        for config_entry_config in config_entry_configs:
+            config_entry = MockConfigEntry(
+                data={},
+                domain=DOMAIN,
+                options=config_entry_config,
+                title=config_entry_config["name"],
+            )
+            config_entry.add_to_hass(hass)
+            assert await hass.config_entries.async_setup(config_entry.entry_id)
+            await hass.async_block_till_done()
+
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+
     await hass.async_block_till_done()
 
-    utility_meter_no_tariffs_entity = entity_registry.async_get("sensor.energy")
-    assert utility_meter_no_tariffs_entity is not None
-    assert utility_meter_no_tariffs_entity.device_id == source_entity.device_id
+    state = hass.states.get("sensor.test_invalid_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
+
+    state = hass.states.get("sensor.test_device_class_invalid_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
+
+    state = hass.states.get("sensor.test_no_device_class_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
+
+    state = hass.states.get("sensor.gas_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) == SensorDeviceClass.GAS
+
+    state = hass.states.get("sensor.water_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) == SensorDeviceClass.WATER
+
+    state = hass.states.get("sensor.current_meter")
+    assert state is not None
+    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
