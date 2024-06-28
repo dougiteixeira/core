@@ -7,6 +7,7 @@ from typing import Any, cast
 
 import voluptuous as vol
 
+from homeassistant.components.climate import DEFAULT_MAX_TEMP, DEFAULT_MIN_TEMP
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN, SensorDeviceClass
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.const import CONF_NAME, DEGREE
@@ -21,7 +22,9 @@ from .const import (
     CONF_COLD_TOLERANCE,
     CONF_HEATER,
     CONF_HOT_TOLERANCE,
+    CONF_MAX_TEMP,
     CONF_MIN_DUR,
+    CONF_MIN_TEMP,
     CONF_PRESETS,
     CONF_SENSOR,
     DEFAULT_TOLERANCE,
@@ -39,6 +42,16 @@ OPTIONS_SCHEMA = {
     ),
     vol.Required(CONF_HEATER): selector.EntitySelector(
         selector.EntitySelectorConfig(domain=SWITCH_DOMAIN)
+    ),
+    vol.Required(CONF_MIN_TEMP, default=DEFAULT_MIN_TEMP): selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            mode=selector.NumberSelectorMode.BOX, unit_of_measurement=DEGREE, step=0.1
+        )
+    ),
+    vol.Required(CONF_MAX_TEMP, default=DEFAULT_MAX_TEMP): selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            mode=selector.NumberSelectorMode.BOX, unit_of_measurement=DEGREE, step=0.1
+        )
     ),
     vol.Required(
         CONF_COLD_TOLERANCE, default=DEFAULT_TOLERANCE
