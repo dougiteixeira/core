@@ -91,6 +91,16 @@ from tests.typing import WebSocketGenerator
             {"verify_ssl": True},
             {},
         ),
+        (
+            "select",
+            {"state": "{{ states('select.one') }}"},
+            "on",
+            {"one": "on", "two": "off"},
+            {},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
+            {},
+        ),
     ],
 )
 @pytest.mark.freeze_time("2024-07-09 00:00:00+00:00")
@@ -199,6 +209,12 @@ async def test_config_flow(
             },
             {"verify_ssl": True},
             {"verify_ssl": True},
+        ),
+        (
+            "select",
+            {"state": "{{ states('select.one') }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
         ),
     ],
 )
@@ -364,6 +380,15 @@ def get_suggested(schema, key):
                 "url": "{{ states('sensor.two') }}",
                 "verify_ssl": True,
             },
+        ),
+        (
+            "select",
+            {"state": "{{ states('select.one') }}"},
+            {"state": "{{ states('select.two') }}"},
+            ["on", "off"],
+            {"one": "on", "two": "off"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
         ),
     ],
 )
@@ -1094,6 +1119,12 @@ async def test_option_flow_sensor_preview_config_entry_removed(
             },
             {},
             {},
+        ),
+        (
+            "select",
+            {"state": "{{ states('select.one') }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
+            {"options": "{{ ['off', 'on', 'auto'] }}"},
         ),
     ],
 )

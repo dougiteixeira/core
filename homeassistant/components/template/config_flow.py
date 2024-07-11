@@ -40,6 +40,7 @@ from homeassistant.helpers.schema_config_entry_flow import (
 
 from .binary_sensor import async_create_preview_binary_sensor
 from .const import CONF_PRESS, DOMAIN
+from .select import CONF_OPTIONS, CONF_SELECT_OPTION
 from .sensor import async_create_preview_sensor
 from .template_entity import TemplateEntity
 
@@ -89,6 +90,13 @@ def generate_schema(domain: str, flow_type: str) -> vol.Schema:
         schema |= {
             vol.Required(CONF_URL): selector.TemplateSelector(),
             vol.Optional(CONF_VERIFY_SSL, default=True): selector.BooleanSelector(),
+            vol.Optional(CONF_DEVICE_ID): selector.DeviceSelector(),
+        }
+
+    if domain == Platform.SELECT:
+        schema |= _SCHEMA_STATE | {
+            vol.Required(CONF_OPTIONS): selector.TemplateSelector(),
+            vol.Optional(CONF_SELECT_OPTION): selector.ActionSelector(),
             vol.Optional(CONF_DEVICE_ID): selector.DeviceSelector(),
         }
 
@@ -223,6 +231,7 @@ TEMPLATE_TYPES = [
     "binary_sensor",
     "button",
     "image",
+    "select",
     "sensor",
 ]
 
@@ -240,6 +249,10 @@ CONFIG_FLOW = {
     Platform.IMAGE: SchemaFlowFormStep(
         config_schema(Platform.IMAGE),
         validate_user_input=validate_user_input(Platform.IMAGE),
+    ),
+    Platform.SELECT: SchemaFlowFormStep(
+        config_schema(Platform.SELECT),
+        validate_user_input=validate_user_input(Platform.SELECT),
     ),
     Platform.SENSOR: SchemaFlowFormStep(
         config_schema(Platform.SENSOR),
@@ -263,6 +276,10 @@ OPTIONS_FLOW = {
     Platform.IMAGE: SchemaFlowFormStep(
         options_schema(Platform.IMAGE),
         validate_user_input=validate_user_input(Platform.IMAGE),
+    ),
+    Platform.SELECT: SchemaFlowFormStep(
+        options_schema(Platform.SELECT),
+        validate_user_input=validate_user_input(Platform.SELECT),
     ),
     Platform.SENSOR: SchemaFlowFormStep(
         options_schema(Platform.SENSOR),

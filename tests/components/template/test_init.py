@@ -309,6 +309,18 @@ async def async_yaml_patch_helper(hass, filename):
         ),
         (
             {
+                "template_type": "select",
+                "name": "My template",
+                "state": "{{ 'on' }}",
+                "options": "{{ ['off', 'on', 'auto'] }}",
+            },
+            {
+                "state": "{{ 'on' }}",
+                "options": "{{ ['off', 'on', 'auto'] }}",
+            },
+        ),
+        (
+            {
                 "template_type": "button",
                 "name": "My template",
             },
