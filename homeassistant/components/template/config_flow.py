@@ -23,6 +23,7 @@ from homeassistant.const import (
     CONF_DEVICE_ID,
     CONF_MODE,
     CONF_NAME,
+    CONF_OPTIMISTIC,
     CONF_STATE,
     CONF_UNIT_OF_MEASUREMENT,
     CONF_URL,
@@ -109,6 +110,7 @@ def generate_schema(domain: str, flow_type: str) -> vol.Schema:
     if domain == Platform.NUMBER:
         schema |= {
             vol.Required(CONF_STATE): selector.TemplateSelector(),
+            vol.Optional(CONF_OPTIMISTIC, default=False): selector.BooleanSelector(),
             vol.Required(
                 CONF_MIN, default=f"{{{{{DEFAULT_MIN_VALUE}}}}}"
             ): selector.TemplateSelector(),
@@ -135,6 +137,7 @@ def generate_schema(domain: str, flow_type: str) -> vol.Schema:
 
     if domain == Platform.SELECT:
         schema |= _SCHEMA_STATE | {
+            vol.Optional(CONF_OPTIMISTIC, default=False): selector.BooleanSelector(),
             vol.Required(CONF_OPTIONS): selector.TemplateSelector(),
             vol.Optional(CONF_SELECT_OPTION): selector.ActionSelector(),
         }

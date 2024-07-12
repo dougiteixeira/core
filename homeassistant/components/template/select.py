@@ -65,6 +65,7 @@ SELECT_CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.template,
         vol.Required(CONF_STATE): cv.template,
+        vol.Optional(CONF_OPTIMISTIC): cv.boolean,
         vol.Required(CONF_OPTIONS): cv.template,
         vol.Optional(CONF_SELECT_OPTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_DEVICE_ID): selector.DeviceSelector(),

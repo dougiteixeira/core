@@ -71,6 +71,7 @@ NUMBER_CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.template,
         vol.Required(CONF_STATE): cv.template,
+        vol.Optional(CONF_OPTIMISTIC): cv.boolean,
         vol.Required(CONF_STEP): cv.template,
         vol.Optional(CONF_SET_VALUE): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_MIN): cv.template,
